@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+    /* Font families */
+    --font-sans: 'Inter', sans-serif;
+    --font-urbanist: 'Urbanist', sans-serif;
+
+    /* Colors */
+    --color-primary: #ffd700;
+    --color-secondary: #ffd700;
+    --color-background: #004b49;
+}
+
+@layer base {
+    body {
+        background-color: var(--color-background);
+        @apply text-sm antialiased;
+        color: #e0f2f1;
+    }
+
+    button {
+        @apply cursor-pointer;
+    }
+}
