@@ -1,9 +1,7 @@
 import { Geist, Urbanist } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import { Metadata } from "next";
-import LenisScroll from "@/components/lenis";
+import ClientLayout from "@/components/client-layout";
 
 const geist = Geist({
     variable: "--font-sans",
@@ -29,10 +27,7 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body>
-                <Navbar />
-                <LenisScroll />
-                {children}
-                <Footer />
+                <ClientLayout>{children}</ClientLayout>
             </body>
         </html>
     );

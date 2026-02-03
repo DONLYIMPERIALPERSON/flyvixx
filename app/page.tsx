@@ -1,18 +1,17 @@
-import { CtaSection } from "@/sections/cta-section";
-import { FaqSection } from "@/sections/faq-section";
-import { FeatureSection } from "@/sections/feature-section";
-import { HeroSection } from "@/sections/hero-section";
+import HomeHeader from "@/components/home-header";
+import BalanceArea from "@/components/balance-area";
+import LearnSection from "@/components/learn-section";
+import ReferralSection from "@/components/referral-section";
+import PortfolioSection from "@/components/portfolio-section";
 
-
-
-export default function Page() {
+export default function Home() {
     return (
-        <main className="mx-4 md:mx-16 lg:mx-24 xl:mx-32 border-x border-[#ffd700]">
-            <HeroSection />
-            <div className="border-t border-[#ffd700]"></div>
-            <FeatureSection />
-            <FaqSection />
-            <CtaSection />
+        <main className="mx-4 md:mx-16 lg:mx-24 xl:mx-32">
+            <HomeHeader />
+            <BalanceArea />
+            <LearnSection />
+            <ReferralSection />
+            <PortfolioSection />
         </main>
     );
 }

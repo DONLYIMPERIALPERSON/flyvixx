@@ -13,7 +13,7 @@ export const Footer = () => {
                             height={30}
                         />
                         <p className="mt-6 text-sm/7 max-w-sm text-gray-500">
-                            Amet minim mollit non deserunt ullamco est sit aliqua dolor do amet sint. Velit officia consequat duis enim velit mollit.
+                            FLYVIXX is a premier digital rewards ecosystem where capital security meets high-performance gaming. Our mission is to provide a protected environment for users to leverage their assets, unlock daily growth, and experience the next generation of risk-free engagement.
                         </p>
                     </div>
                 </div>
@@ -22,7 +22,7 @@ export const Footer = () => {
                 <p className="text-gray-500 py-6 text-center">
                     Copyright {new Date().getFullYear()} &copy;
                     <a href="https://prebuiltui.com?utm_source=mapple">
-                        PrebuiltUI
+                        Flyvixx
                     </a>{' '}
                     All Right Reserved.
                 </p>
