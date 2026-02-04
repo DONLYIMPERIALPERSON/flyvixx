@@ -1,6 +1,15 @@
 {
-  "name": "FLYVIXX",
+  "name": "FLYVIXX - Aviator Game",
   "short_name": "FLYVIXX",
+  "description": "Play the exciting Aviator game with real-time multiplayer action",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#ffd700",
+  "background_color": "#004b49",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["games", "entertainment"],
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -13,9 +22,46 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
-  "theme_color": "#ffd700",
-  "background_color": "#004b49",
-  "display": "standalone"
+  "shortcuts": [
+    {
+      "name": "Play Aviator",
+      "short_name": "Play",
+      "description": "Start playing the Aviator game",
+      "url": "/fly",
+      "icons": [
+        {
+          "src": "/android-chrome-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/hero-section-image.png",
+      "sizes": "1200x800",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
 }

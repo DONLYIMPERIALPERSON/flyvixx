@@ -30,7 +30,7 @@ export const Navbar = () => {
                     </li>
                 ))}
             </ul>
-            <button className="max-md:hidden bg-primary hover:bg-secondary transition duration-300 text-black px-6 py-2.5 rounded-lg">
+            <button className="max-md:hidden bg-primary hover:bg-secondary transition duration-300 text-black px-8 py-3 rounded-md">
                 Get Started
             </button>
             <button className="md:hidden" onClick={() => setIsOpen(!isOpen)}>

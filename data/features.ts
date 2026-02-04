@@ -3,12 +3,6 @@ import { IFeature } from "../types";
 
 export const features: IFeature[] = [
     {
-        title: "Tiered Access Levels",
-        description:
-            "Level Up Your Potential. Progress through our referral tiers to increase your daily flight capacity. More levels mean more turns, giving you more opportunities to win every 24 hours.",
-        icon: TrendingUpIcon
-    },
-    {
         title: "Risk-Free Flight Power",
         description:
             "Gaming Without the Drawback. Utilize 1% of your locked position as daily betting power. Experience the full thrill of the Aviator game without ever touching your initial principal.",
@@ -37,5 +31,11 @@ export const features: IFeature[] = [
         description:
             "The Power of Connection. Our infrastructure rewards community builders. As your network grows, so does your level, unlocking premium features and higher engagement limits automatically.",
         icon: UsersIcon,
+    },
+    {
+        title: "Tiered Access Levels",
+        description:
+            "Level Up Your Potential. Progress through our referral tiers to increase your daily flight capacity. More levels mean more turns, giving you more opportunities to win every 24 hours.",
+        icon: TrendingUpIcon
     },
 ]
