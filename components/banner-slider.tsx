@@ -1,14 +1,13 @@
 'use client';
 
 import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, Plane, DollarSign, Users, Clock, Shield, Zap } from "lucide-react";
+import { Clock, Shield, Zap } from "lucide-react";
 
 interface BannerSlide {
     title: string;
     subtitle: string;
     bgColor: string;
     textColor: string;
-    icon: React.ReactNode;
     accentColor: string;
 }
 
@@ -18,7 +17,6 @@ const slides: BannerSlide[] = [
         subtitle: "Risk Free, Unlimited Rewards",
         bgColor: "bg-gradient-to-br from-[#004B49] via-[#00695C] to-[#00897B]",
         textColor: "text-white",
-        icon: <Plane className="w-6 h-6 md:w-8 md:h-8" />,
         accentColor: "bg-[#FFD700]"
     },
     {
@@ -26,7 +24,6 @@ const slides: BannerSlide[] = [
         subtitle: "24/7 support",
         bgColor: "bg-gradient-to-br from-[#FFD700] via-[#FFC107] to-[#FF8F00]",
         textColor: "text-black",
-        icon: <DollarSign className="w-6 h-6 md:w-8 md:h-8" />,
         accentColor: "bg-[#004B49]"
     },
     {
@@ -34,7 +31,6 @@ const slides: BannerSlide[] = [
         subtitle: "No Limits, Earn more by referring your friends",
         bgColor: "bg-gradient-to-br from-[#004B49] via-[#00695C] to-[#00897B]",
         textColor: "text-white",
-        icon: <Users className="w-6 h-6 md:w-8 md:h-8" />,
         accentColor: "bg-[#FFD700]"
     }
 ];
@@ -73,7 +69,7 @@ export default function BannerSlider() {
                     {slides.map((slide, index) => (
                         <div
                             key={index}
-                            className={`flex-shrink-0 w-full ${slide.bgColor} flex items-center justify-center px-4 md:px-8 relative overflow-hidden`}
+                            className={`flex-shrink-0 w-full ${slide.bgColor} flex items-center px-4 md:px-8 relative overflow-hidden`}
                         >
                             {/* Background pattern */}
                             <div className="absolute inset-0 opacity-5">
@@ -81,14 +77,7 @@ export default function BannerSlider() {
                                 <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.1),transparent_50%)]"></div>
                             </div>
 
-                            <div className="text-center relative z-10 max-w-xl">
-                                {/* Icon */}
-                                <div className={`inline-flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-full ${slide.accentColor} mb-2 shadow-md`}>
-                                    <div className={slide.textColor === 'text-white' ? 'text-[#004B49]' : 'text-white'}>
-                                        {slide.icon}
-                                    </div>
-                                </div>
-
+                            <div className="text-left relative z-10 max-w-xl">
                                 {/* Title */}
                                 <h2 className={`text-sm md:text-lg lg:text-xl font-bold mb-2 leading-tight ${slide.textColor}`}>
                                     {slide.title}
@@ -123,22 +112,7 @@ export default function BannerSlider() {
                     ))}
                 </div>
 
-                {/* Navigation arrows */}
-                <button
-                    onClick={prevSlide}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 rounded-full p-2 transition-all duration-200 backdrop-blur-sm"
-                    aria-label="Previous slide"
-                >
-                    <ChevronLeft className="w-5 h-5 text-white" />
-                </button>
 
-                <button
-                    onClick={nextSlide}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 rounded-full p-2 transition-all duration-200 backdrop-blur-sm"
-                    aria-label="Next slide"
-                >
-                    <ChevronRight className="w-5 h-5 text-white" />
-                </button>
 
 
             </div>

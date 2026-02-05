@@ -16,11 +16,11 @@ export default function BottomNav({ isLoggedIn, onOpenLogin, onLogin }: BottomNa
         return (
             <nav className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-lg border-t border-white/20 p-4">
                 <div className="flex justify-center items-center">
-                    <div className="bg-[#DCEFEE] rounded-2xl h-14 w-80 relative flex items-center justify-start px-4 cursor-pointer" onClick={onOpenLogin}>
-                        <div className="bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg">
+                    <div className="bg-[#DCEFEE] rounded-2xl h-14 w-80 relative flex items-center justify-between px-4 cursor-pointer" onClick={onOpenLogin}>
+                        <span className="text-gray-600 text-sm">tap to login</span>
+                        <div className="bg-white rounded-lg w-10 h-10 flex items-center justify-center shadow-lg">
                             <ChevronRight size={16} className="text-gray-600" />
                         </div>
-                        <span className="text-gray-600 text-sm ml-4">slide to login</span>
                     </div>
                 </div>
             </nav>
