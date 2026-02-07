@@ -39,6 +39,13 @@ yarn-error.log*
 !production/.env.production
 !production/.env.frontend
 
+# tunneling and development configuration files
+flyvixx-*.yml
+flyvixx-*.yaml
+*.cloudflared.*
+.ngrok*
+.ngrok2*
+
 # vercel
 .vercel
 
