@@ -8,26 +8,32 @@ import { createPrivateKey, createSign } from 'crypto';
 const SAFEHAVEN_BASE_URL = process.env.SAFEHAVEN_BASE_URL || 'https://api.sandbox.safehavenmfb.com';
 const SAFEHAVEN_CLIENT_ID = process.env.SAFEHAVEN_CLIENT_ID || process.env.NEXT_PUBLIC_SAFEHAVEN_CLIENT_ID || '';
 
-// Read keys from files instead of environment variables for proper formatting
-const privateKeyPath = path.join(__dirname, '../../privatekey.pem');
-const certificatePath = path.join(__dirname, '../../publickey.cer');
-
+// Read keys from environment variables instead of files for better security
 let SAFEHAVEN_PRIVATE_KEY: string;
 let SAFEHAVEN_CERTIFICATE: string;
 
 try {
-  SAFEHAVEN_PRIVATE_KEY = fs.readFileSync(privateKeyPath, 'utf8');
-  console.log('Successfully read private key, length:', SAFEHAVEN_PRIVATE_KEY.length);
-  console.log('Private key starts with:', SAFEHAVEN_PRIVATE_KEY.substring(0, 50) + '...');
+  SAFEHAVEN_PRIVATE_KEY = process.env.SAFEHAVEN_PRIVATE_KEY || '';
+  if (SAFEHAVEN_PRIVATE_KEY) {
+    console.log('Successfully loaded private key from environment, length:', SAFEHAVEN_PRIVATE_KEY.length);
+    console.log('Private key starts with:', SAFEHAVEN_PRIVATE_KEY.substring(0, 50) + '...');
+  } else {
+    console.error('SafeHaven private key not found in environment variables');
+  }
 } catch (error) {
-  console.error('Failed to read SafeHaven private key file:', error);
+  console.error('Failed to load SafeHaven private key from environment:', error);
   SAFEHAVEN_PRIVATE_KEY = '';
 }
 
 try {
-  SAFEHAVEN_CERTIFICATE = fs.readFileSync(certificatePath, 'utf8');
+  SAFEHAVEN_CERTIFICATE = process.env.SAFEHAVEN_CERTIFICATE || '';
+  if (SAFEHAVEN_CERTIFICATE) {
+    console.log('Successfully loaded certificate from environment, length:', SAFEHAVEN_CERTIFICATE.length);
+  } else {
+    console.error('SafeHaven certificate not found in environment variables');
+  }
 } catch (error) {
-  console.error('Failed to read SafeHaven certificate file:', error);
+  console.error('Failed to load SafeHaven certificate from environment:', error);
   SAFEHAVEN_CERTIFICATE = '';
 }
 
