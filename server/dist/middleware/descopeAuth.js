@@ -134,7 +134,7 @@ const devAuth = async (req, res, next) => {
             logger_1.logger.info('Dev authentication - using mock user');
             return next();
         }
-        // Fall back to normal Descope authentication
+        // Use normal Descope authentication for all other requests
         const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             res.status(401).json({ error: 'No token provided' });

@@ -13,6 +13,7 @@ exports.User = exports.UserStatus = exports.UserRole = void 0;
 const typeorm_1 = require("typeorm");
 const Bet_1 = require("./Bet");
 const Transaction_1 = require("./Transaction");
+const Notification_1 = require("./Notification");
 var UserRole;
 (function (UserRole) {
     UserRole["USER"] = "user";
@@ -28,7 +29,7 @@ let User = class User {
 };
 exports.User = User;
 __decorate([
-    (0, typeorm_1.PrimaryGeneratedColumn)('uuid'),
+    (0, typeorm_1.PrimaryColumn)(),
     __metadata("design:type", String)
 ], User.prototype, "id", void 0);
 __decorate([
@@ -51,6 +52,14 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'decimal', precision: 15, scale: 2, default: 0 }),
     __metadata("design:type", Number)
 ], User.prototype, "portfolioBalance", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 15, scale: 2, default: 0 }),
+    __metadata("design:type", Number)
+], User.prototype, "lockedFunds", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], User.prototype, "lockedUntil", void 0);
 __decorate([
     (0, typeorm_1.Column)({
         type: 'enum',
@@ -76,6 +85,14 @@ __decorate([
     __metadata("design:type", Boolean)
 ], User.prototype, "emailVerified", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ unique: true, nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "referralCode", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "referredBy", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], User.prototype, "createdAt", void 0);
@@ -91,6 +108,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => Transaction_1.Transaction, (transaction) => transaction.user),
     __metadata("design:type", Array)
 ], User.prototype, "transactions", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => Notification_1.Notification, (notification) => notification.user),
+    __metadata("design:type", Array)
+], User.prototype, "notifications", void 0);
 exports.User = User = __decorate([
     (0, typeorm_1.Entity)('users')
 ], User);

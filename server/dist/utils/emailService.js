@@ -121,6 +121,7 @@ class EmailService {
      */
     async sendWithdrawalEmail(email, amount) {
         try {
+            console.log('📧 Preparing to send withdrawal email to:', email, 'for amount:', amount);
             // Load email templates
             const htmlTemplate = fs.readFileSync(path.join(this.templatesDir, 'withdrawal-email.html'), 'utf-8');
             const textTemplate = fs.readFileSync(path.join(this.templatesDir, 'withdrawal-email.txt'), 'utf-8');
@@ -130,6 +131,13 @@ class EmailService {
             // Generate random number to prevent email threading
             const randomNumber = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
             const subject = `Flyvixx - Withdrawal Processed ${randomNumber}`;
+            console.log('📧 Email data prepared:', {
+                from: 'Flyvixx <noreply@mail.flyvixx.com>',
+                to: [email],
+                subject: subject,
+                htmlLength: htmlContent.length,
+                textLength: textContent.length
+            });
             const result = await resend.emails.send({
                 from: 'Flyvixx <noreply@mail.flyvixx.com>',
                 to: [email],
@@ -142,6 +150,53 @@ class EmailService {
         }
         catch (error) {
             console.error('❌ Failed to send withdrawal notification email:', error);
+            console.error('❌ Error details:', {
+                message: error instanceof Error ? error.message : 'Unknown error',
+                name: error instanceof Error ? error.name : 'Unknown',
+                stack: error instanceof Error ? error.stack : undefined,
+                fullError: error
+            });
+            return false;
+        }
+    }
+    /**
+     * Send a referral notification email to a referrer
+     */
+    async sendReferralNotificationEmail(referrerEmail, newUserEmail) {
+        try {
+            // Load email templates
+            const htmlTemplate = fs.readFileSync(path.join(this.templatesDir, 'referral-notification-email.html'), 'utf-8');
+            const textTemplate = fs.readFileSync(path.join(this.templatesDir, 'referral-notification-email.txt'), 'utf-8');
+            // Conceal the new user's email
+            const concealEmail = (email) => {
+                const [localPart, domain] = email.split('@');
+                if (localPart.length <= 2)
+                    return `${localPart}***@${domain}`;
+                return `${localPart.substring(0, 2)}***@${domain}`;
+            };
+            const concealedEmail = concealEmail(newUserEmail);
+            // Replace placeholders
+            const htmlContent = htmlTemplate
+                .replace(/ranssom\*\*\*\*\*\*\*\*/g, concealedEmail)
+                .replace(/Hi User/g, `Hi ${referrerEmail.split('@')[0]}`);
+            const textContent = textTemplate
+                .replace(/ranssom\*\*\*\*\*\*\*\*\*/g, concealedEmail)
+                .replace(/Hi User/g, `Hi ${referrerEmail.split('@')[0]}`);
+            // Generate random number to prevent email threading
+            const randomNumber = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+            const subject = `Flyvixx - New Referral ${randomNumber}`;
+            const result = await resend.emails.send({
+                from: 'Flyvixx <noreply@mail.flyvixx.com>',
+                to: [referrerEmail],
+                subject: subject,
+                html: htmlContent,
+                text: textContent,
+            });
+            console.log('📧 Referral notification email sent successfully:', result);
+            return true;
+        }
+        catch (error) {
+            console.error('❌ Failed to send referral notification email:', error);
             return false;
         }
     }

@@ -9,9 +9,19 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Notification = void 0;
+exports.Notification = exports.NotificationType = void 0;
 const typeorm_1 = require("typeorm");
 const User_1 = require("./User");
+var NotificationType;
+(function (NotificationType) {
+    NotificationType["DEPOSIT"] = "deposit";
+    NotificationType["WITHDRAWAL"] = "withdrawal";
+    NotificationType["LOCK_FUNDS"] = "lock_funds";
+    NotificationType["UNLOCK_FUNDS"] = "unlock_funds";
+    NotificationType["REFERRAL"] = "referral";
+    NotificationType["SYSTEM"] = "system";
+    NotificationType["REWARD"] = "reward";
+})(NotificationType || (exports.NotificationType = NotificationType = {}));
 let Notification = class Notification {
 };
 exports.Notification = Notification;
@@ -20,17 +30,28 @@ __decorate([
     __metadata("design:type", String)
 ], Notification.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.notifications),
-    __metadata("design:type", User_1.User)
-], Notification.prototype, "user", void 0);
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], Notification.prototype, "userId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'enum',
+        enum: NotificationType
+    }),
+    __metadata("design:type", String)
+], Notification.prototype, "type", void 0);
 __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], Notification.prototype, "title", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ type: 'text' }),
     __metadata("design:type", String)
 ], Notification.prototype, "message", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'json', nullable: true }),
+    __metadata("design:type", Object)
+], Notification.prototype, "metadata", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
@@ -40,9 +61,10 @@ __decorate([
     __metadata("design:type", Date)
 ], Notification.prototype, "createdAt", void 0);
 __decorate([
-    (0, typeorm_1.UpdateDateColumn)(),
-    __metadata("design:type", Date)
-], Notification.prototype, "updatedAt", void 0);
+    (0, typeorm_1.ManyToOne)(() => User_1.User, (user) => user.id),
+    (0, typeorm_1.JoinColumn)({ name: 'userId' }),
+    __metadata("design:type", User_1.User)
+], Notification.prototype, "user", void 0);
 exports.Notification = Notification = __decorate([
     (0, typeorm_1.Entity)('notifications')
 ], Notification);

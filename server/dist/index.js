@@ -24,11 +24,19 @@ const game_1 = __importDefault(require("./routes/game"));
 const transaction_1 = __importDefault(require("./routes/transaction"));
 const otp_1 = __importDefault(require("./routes/otp"));
 const safehaven_1 = __importDefault(require("./routes/safehaven"));
+const referral_1 = __importDefault(require("./routes/referral"));
+const notification_1 = __importDefault(require("./routes/notification"));
 const app = (0, express_1.default)();
+/** * PRO-TIP: Trust Proxy
+ * Required for Cloudflare and Rate Limiting to work correctly.
+ */
+app.set('trust proxy', 1);
 const server = (0, http_1.createServer)(app);
+// Use the environment variable for the frontend domain
+const frontendUrl = process.env.FRONTEND_URL || "https://flyvixx.com";
 const io = new socket_io_1.Server(server, {
     cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        origin: frontendUrl,
         methods: ["GET", "POST"],
         credentials: true
     },
@@ -40,7 +48,7 @@ app.use((0, helmet_1.default)({
 }));
 app.use((0, compression_1.default)());
 app.use((0, cors_1.default)({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: frontendUrl,
     credentials: true
 }));
 app.use(express_1.default.json({ limit: '10mb' }));
@@ -62,6 +70,8 @@ app.use('/api/game', game_1.default);
 app.use('/api/transactions', transaction_1.default);
 app.use('/api/otp', otp_1.default);
 app.use('/api/safehaven', safehaven_1.default);
+app.use('/api/referral', referral_1.default);
+app.use('/api/notifications', notification_1.default);
 // Error handling middleware
 app.use(errorHandler_1.errorHandler);
 // Socket.io setup
@@ -74,8 +84,8 @@ async function startServer() {
         await (0, database_1.connectDatabase)();
         server.listen(PORT, () => {
             logger_1.logger.info(`🚀 Flyvixx Server running on port ${PORT}`);
-            logger_1.logger.info(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-            logger_1.logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+            logger_1.logger.info(`🌐 Environment: ${process.env.NODE_ENV || 'production'}`);
+            logger_1.logger.info(`🔗 Frontend URL: ${frontendUrl}`);
         });
     }
     catch (error) {

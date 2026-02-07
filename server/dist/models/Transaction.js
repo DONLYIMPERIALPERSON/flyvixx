@@ -19,6 +19,8 @@ var TransactionType;
     TransactionType["BET_PLACED"] = "bet_placed";
     TransactionType["CASH_OUT"] = "cash_out";
     TransactionType["TRANSFER"] = "transfer";
+    TransactionType["LOCK_FUNDS"] = "lock_funds";
+    TransactionType["UNLOCK_FUNDS"] = "unlock_funds";
 })(TransactionType || (exports.TransactionType = TransactionType = {}));
 var TransactionStatus;
 (function (TransactionStatus) {

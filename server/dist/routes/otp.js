@@ -15,7 +15,7 @@ function generateOTP() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 // POST /api/otp/send - Send OTP to user's email
-router.post('/send', descopeAuth_1.devAuth, async (req, res) => {
+router.post('/send', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const userId = req.user?.sub;
         const userEmail = req.user?.email;
@@ -50,7 +50,7 @@ router.post('/send', descopeAuth_1.devAuth, async (req, res) => {
     }
 });
 // POST /api/otp/verify - Verify OTP code
-router.post('/verify', descopeAuth_1.devAuth, async (req, res) => {
+router.post('/verify', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const userId = req.user?.sub;
         const { code } = req.body;
@@ -99,7 +99,7 @@ router.post('/verify', descopeAuth_1.devAuth, async (req, res) => {
     }
 });
 // POST /api/otp/resend - Resend OTP (same as send, but checks if existing OTP is still valid)
-router.post('/resend', descopeAuth_1.devAuth, async (req, res) => {
+router.post('/resend', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const userId = req.user?.sub;
         const userEmail = req.user?.email;

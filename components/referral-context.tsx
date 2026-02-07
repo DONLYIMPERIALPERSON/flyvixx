@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 interface ReferralContextType {
@@ -10,44 +10,47 @@ interface ReferralContextType {
 
 const ReferralContext = createContext<ReferralContextType | undefined>(undefined);
 
-export function ReferralProvider({ children }: { children: ReactNode }) {
-    const [referralCode, setReferralCode] = useState<string | null>(null);
+// 1. Separate component to handle the SearchParams hook safely
+function ReferralParamsHandler({ setReferralCode }: { setReferralCode: (code: string | null) => void }) {
     const searchParams = useSearchParams();
 
-    // Check for referral code in URL parameters on mount
     useEffect(() => {
         const refParam = searchParams.get('ref');
         if (refParam) {
             setReferralCode(refParam);
-            // Store in localStorage for persistence across page reloads
             localStorage.setItem('pendingReferralCode', refParam);
         } else {
-            // Check if there's a stored referral code from previous visit
             const storedCode = localStorage.getItem('pendingReferralCode');
             if (storedCode) {
                 setReferralCode(storedCode);
             }
         }
-    }, [searchParams]);
+    }, [searchParams, setReferralCode]);
 
-    // Clear referral code after successful signup
-    const clearReferralCode = () => {
-        setReferralCode(null);
-        localStorage.removeItem('pendingReferralCode');
+    return null; // This component doesn't render anything
+}
+
+export function ReferralProvider({ children }: { children: ReactNode }) {
+    const [referralCode, setReferralCode] = useState<string | null>(null);
+
+    const updateReferralCode = (code: string | null) => {
+        setReferralCode(code);
+        if (code) {
+            localStorage.setItem('pendingReferralCode', code);
+        } else {
+            localStorage.removeItem('pendingReferralCode');
+        }
     };
 
     return (
         <ReferralContext.Provider value={{
             referralCode,
-            setReferralCode: (code) => {
-                setReferralCode(code);
-                if (code) {
-                    localStorage.setItem('pendingReferralCode', code);
-                } else {
-                    localStorage.removeItem('pendingReferralCode');
-                }
-            }
+            setReferralCode: updateReferralCode
         }}>
+            {/* 2. Wrap the Params Handler in Suspense to fix the Build Error */}
+            <Suspense fallback={null}>
+                <ReferralParamsHandler setReferralCode={setReferralCode} />
+            </Suspense>
             {children}
         </ReferralContext.Provider>
     );

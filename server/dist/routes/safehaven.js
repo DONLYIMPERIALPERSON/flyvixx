@@ -12,12 +12,13 @@ const User_1 = require("../models/User");
 const Transaction_1 = require("../models/Transaction");
 const emailService_1 = require("../utils/emailService");
 const banks_1 = require("../utils/banks");
+const notificationService_1 = require("../utils/notificationService");
 const router = express_1.default.Router();
 /**
  * GET /api/safehaven/token
  * Get a valid SafeHaven OAuth2 access token
  */
-router.get('/token', descopeAuth_1.devAuth, async (req, res) => {
+router.get('/token', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const accessToken = await safeHavenAuth_1.safeHavenAuth.getAccessToken();
         if (accessToken) {
@@ -47,7 +48,7 @@ router.get('/token', descopeAuth_1.devAuth, async (req, res) => {
  * POST /api/safehaven/verify-bank
  * Verify bank account details using SafeHaven API
  */
-router.post('/verify-bank', descopeAuth_1.devAuth, async (req, res) => {
+router.post('/verify-bank', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const { bankCode, accountNumber } = req.body;
         if (!bankCode || !accountNumber) {
@@ -75,7 +76,7 @@ router.post('/verify-bank', descopeAuth_1.devAuth, async (req, res) => {
  * POST /api/safehaven/virtual-account
  * Create a virtual account for bank transfers using SafeHaven API
  */
-router.post('/virtual-account', descopeAuth_1.devAuth, async (req, res) => {
+router.post('/virtual-account', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const { amount } = req.body; // amount is in USD
         const userId = req.user?.sub;
@@ -110,7 +111,7 @@ router.post('/virtual-account', descopeAuth_1.devAuth, async (req, res) => {
  * POST /api/safehaven/transfer
  * Transfer funds to user's bank account using SafeHaven API
  */
-router.post('/transfer', descopeAuth_1.devAuth, async (req, res) => {
+router.post('/transfer', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const userId = req.user?.sub;
         const { amount, method } = req.body;
@@ -331,10 +332,24 @@ router.post('/transfer', descopeAuth_1.devAuth, async (req, res) => {
                 await transactionalEntityManager.save(transaction);
             });
             logger_1.logger.info(`Withdrawal completed successfully: User ${userId}, Amount $${amount}, Transaction ${transaction.id}`);
+            // Create withdrawal notification
+            try {
+                const notification = await notificationService_1.NotificationService.createWithdrawalNotification(userId, amount);
+                logger_1.logger.info(`✅ Withdrawal notification created for user ${userId}: ${notification.id}`);
+            }
+            catch (notificationError) {
+                logger_1.logger.error('❌ Failed to create withdrawal notification:', notificationError);
+                // Don't fail the withdrawal if notification creation fails
+            }
             // Send withdrawal notification email
             try {
-                await emailService_1.emailService.sendWithdrawalEmail(user.email, amount.toFixed(2));
-                logger_1.logger.info(`Withdrawal notification email sent to ${user.email}`);
+                const emailSent = await emailService_1.emailService.sendWithdrawalEmail(user.email, amount.toFixed(2));
+                if (emailSent) {
+                    logger_1.logger.info(`Withdrawal notification email sent to ${user.email}`);
+                }
+                else {
+                    logger_1.logger.warn(`Withdrawal notification email failed to send to ${user.email} - service returned false`);
+                }
             }
             catch (emailError) {
                 logger_1.logger.error('Failed to send withdrawal notification email:', emailError);
@@ -436,6 +451,15 @@ router.post('/webhook', async (req, res) => {
             };
             await transactionalEntityManager.save(transaction);
             logger_1.logger.info(`Deposit processed successfully: User ${userId}, Amount $${originalAmount}, Transaction ${transaction.id}`);
+            // Create deposit notification
+            try {
+                const notification = await notificationService_1.NotificationService.createDepositNotification(userId, originalAmount);
+                logger_1.logger.info(`✅ Deposit notification created for user ${userId}: ${notification.id}`);
+            }
+            catch (notificationError) {
+                logger_1.logger.error('❌ Failed to create deposit notification:', notificationError);
+                // Don't fail the webhook if notification creation fails
+            }
             // Send deposit notification email
             try {
                 await emailService_1.emailService.sendDepositEmail(user.email, originalAmount.toFixed(2));
@@ -463,7 +487,7 @@ router.post('/webhook', async (req, res) => {
  * POST /api/safehaven/admin/approve-withdrawal
  * Admin endpoint to approve large withdrawals (> $100K)
  */
-router.post('/admin/approve-withdrawal', descopeAuth_1.devAuth, async (req, res) => {
+router.post('/admin/approve-withdrawal', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const userId = req.user?.sub;
         const { transactionId } = req.body;
@@ -575,8 +599,13 @@ router.post('/admin/approve-withdrawal', descopeAuth_1.devAuth, async (req, res)
                 logger_1.logger.info(`Withdrawal approved and initiated: Transaction ${transaction.id}`);
                 // Send withdrawal notification email to user
                 try {
-                    await emailService_1.emailService.sendWithdrawalEmail(withdrawalUser.email, transaction.amount.toFixed(2));
-                    logger_1.logger.info(`Withdrawal notification email sent to ${withdrawalUser.email} for approved withdrawal`);
+                    const emailSent = await emailService_1.emailService.sendWithdrawalEmail(withdrawalUser.email, transaction.amount.toFixed(2));
+                    if (emailSent) {
+                        logger_1.logger.info(`Withdrawal notification email sent to ${withdrawalUser.email} for approved withdrawal`);
+                    }
+                    else {
+                        logger_1.logger.warn(`Withdrawal notification email failed to send to ${withdrawalUser.email} for approved withdrawal - service returned false`);
+                    }
                 }
                 catch (emailError) {
                     logger_1.logger.error('Failed to send withdrawal notification email for approved withdrawal:', emailError);
@@ -650,7 +679,7 @@ router.post('/admin/approve-withdrawal', descopeAuth_1.devAuth, async (req, res)
  * POST /api/safehaven/admin/retry-withdrawal
  * Admin endpoint to retry failed withdrawals
  */
-router.post('/admin/retry-withdrawal', descopeAuth_1.devAuth, async (req, res) => {
+router.post('/admin/retry-withdrawal', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         const userId = req.user?.sub;
         const { transactionId } = req.body;

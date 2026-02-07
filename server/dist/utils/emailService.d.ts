@@ -26,6 +26,10 @@ export declare class EmailService {
      */
     sendWithdrawalEmail(email: string, amount: string): Promise<boolean>;
     /**
+     * Send a referral notification email to a referrer
+     */
+    sendReferralNotificationEmail(referrerEmail: string, newUserEmail: string): Promise<boolean>;
+    /**
      * Send a generic email
      */
     sendEmail(options: EmailOptions): Promise<boolean>;

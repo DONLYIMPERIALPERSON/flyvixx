@@ -68,7 +68,7 @@ function validatePayoutDetails(payoutDetails) {
     return null; // No validation errors
 }
 // GET /api/user/profile
-router.get('/profile', descopeAuth_1.devAuth, async (req, res) => {
+router.get('/profile', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         // Get user from Descope auth middleware
         const userId = req.user?.sub;
@@ -117,7 +117,7 @@ router.get('/profile', descopeAuth_1.devAuth, async (req, res) => {
     }
 });
 // PUT /api/user/profile
-router.put('/profile', descopeAuth_1.devAuth, async (req, res) => {
+router.put('/profile', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         // Get user from Descope auth middleware
         const userId = req.user?.sub;
@@ -171,7 +171,7 @@ router.put('/profile', descopeAuth_1.devAuth, async (req, res) => {
     }
 });
 // GET /api/user/balance
-router.get('/balance', descopeAuth_1.devAuth, async (req, res) => {
+router.get('/balance', descopeAuth_1.validateDescopeToken, async (req, res) => {
     try {
         // Get user from Descope auth middleware
         const userId = req.user?.sub;

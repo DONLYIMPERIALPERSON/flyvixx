@@ -26,10 +26,20 @@ import referralRoutes from './routes/referral';
 import notificationRoutes from './routes/notification';
 
 const app = express();
+
+/** * PRO-TIP: Trust Proxy
+ * Required for Cloudflare and Rate Limiting to work correctly.
+ */
+app.set('trust proxy', 1);
+
 const server = createServer(app);
+
+// Use the environment variable for the frontend domain
+const frontendUrl = process.env.FRONTEND_URL || "https://flyvixx.com";
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: frontendUrl,
     methods: ["GET", "POST"],
     credentials: true
   },
@@ -42,7 +52,7 @@ app.use(helmet({
 }));
 app.use(compression());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
+  origin: frontendUrl,
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' }));
@@ -86,8 +96,8 @@ async function startServer() {
 
     server.listen(PORT, () => {
       logger.info(`🚀 Flyvixx Server running on port ${PORT}`);
-      logger.info(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`🔗 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+      logger.info(`🌐 Environment: ${process.env.NODE_ENV || 'production'}`);
+      logger.info(`🔗 Frontend URL: ${frontendUrl}`);
     });
   } catch (error) {
     logger.error('❌ Failed to start server:', error);

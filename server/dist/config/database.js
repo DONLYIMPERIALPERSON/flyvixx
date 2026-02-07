@@ -8,11 +8,12 @@ const User_1 = require("../models/User");
 const Game_1 = require("../models/Game");
 const Bet_1 = require("../models/Bet");
 const Transaction_1 = require("../models/Transaction");
+const Notification_1 = require("../models/Notification");
 exports.AppDataSource = new typeorm_1.DataSource({
     type: 'postgres',
     url: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }, // Accept self-signed certificates for development
-    entities: [User_1.User, Game_1.Game, Bet_1.Bet, Transaction_1.Transaction],
+    entities: [User_1.User, Game_1.Game, Bet_1.Bet, Transaction_1.Transaction, Notification_1.Notification],
     synchronize: process.env.NODE_ENV === 'development', // Auto-create tables in dev
     logging: process.env.NODE_ENV === 'development',
     poolSize: 10,

@@ -4,7 +4,9 @@ export declare enum TransactionType {
     WITHDRAWAL = "withdrawal",
     BET_PLACED = "bet_placed",
     CASH_OUT = "cash_out",
-    TRANSFER = "transfer"
+    TRANSFER = "transfer",
+    LOCK_FUNDS = "lock_funds",
+    UNLOCK_FUNDS = "unlock_funds"
 }
 export declare enum TransactionStatus {
     PENDING = "pending",

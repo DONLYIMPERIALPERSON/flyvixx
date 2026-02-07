@@ -1,5 +1,6 @@
 import { Bet } from './Bet';
 import { Transaction } from './Transaction';
+import { Notification } from './Notification';
 export declare enum UserRole {
     USER = "user",
     ADMIN = "admin"
@@ -29,13 +30,18 @@ export declare class User {
     passwordHash: string;
     cashBalance: number;
     portfolioBalance: number;
+    lockedFunds: number;
+    lockedUntil?: Date;
     role: UserRole;
     status: UserStatus;
     lastLoginAt?: Date;
     emailVerified: boolean;
+    referralCode?: string;
+    referredBy?: string;
     createdAt: Date;
     updatedAt: Date;
     bets: Bet[];
     transactions: Transaction[];
+    notifications: Notification[];
 }
 //# sourceMappingURL=User.d.ts.map
