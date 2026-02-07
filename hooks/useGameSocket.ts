@@ -164,7 +164,7 @@ export const useGameSocket = (userToken?: string) => {
 
   useEffect(() => {
     // Try to connect to real server first
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL;
 
     // For development/demo purposes, use per-player game if real server not available
     const usePerPlayerGame = !backendUrl || backendUrl.includes('localhost') || process.env.NODE_ENV === 'development';

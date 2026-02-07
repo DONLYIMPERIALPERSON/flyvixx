@@ -1,32 +1,78 @@
 'use client';
 
-import { useState } from "react";
-import { X, Copy, CheckCircle, Users, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Copy, CheckCircle, Users, AlertTriangle, Crown } from "lucide-react";
+import { useSession } from "@descope/react-sdk";
 
 interface ReferralModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-const referralLink = 'https://flyvixx.com/ref/johndoe123';
-
-const referrals = [
-    { name: 'John S***', status: 'active', joinedDate: '2024-01-15' },
-    { name: 'Sarah M***', status: 'active', joinedDate: '2024-01-20' },
-    { name: 'Mike R***', status: 'inactive', joinedDate: '2024-01-10' },
-    { name: 'Emma L***', status: 'active', joinedDate: '2024-01-25' },
-    { name: 'David K***', status: 'inactive', joinedDate: '2024-01-05' },
-    { name: 'Lisa P***', status: 'active', joinedDate: '2024-01-30' },
-    { name: 'Tom W***', status: 'inactive', joinedDate: '2024-01-08' },
-    { name: 'Anna G***', status: 'active', joinedDate: '2024-02-01' },
-];
+interface ReferralData {
+    referralCode: string;
+    referralLink: string;
+    totalReferrals: number;
+    activeReferrals: number;
+    level: number;
+    referredUsers: Array<{
+        id: string;
+        email: string;
+        isActive: boolean;
+        joinedAt: string;
+    }>;
+}
 
 export default function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
+    const { sessionToken } = useSession();
     const [copiedLink, setCopiedLink] = useState(false);
+    const [referralData, setReferralData] = useState<ReferralData | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Fetch referral data when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchReferralData();
+        }
+    }, [isOpen]);
+
+    const fetchReferralData = async () => {
+        try {
+            setIsLoading(true);
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+            if (!apiBaseUrl) {
+                console.error('API URL not configured');
+                return;
+            }
+
+            const response = await fetch(`${apiBaseUrl}/api/referral/info`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setReferralData(data.referral);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch referral data:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const handleCopyLink = async () => {
+        if (!referralData?.referralLink) return;
+
         try {
-            await navigator.clipboard.writeText(referralLink);
+            await navigator.clipboard.writeText(referralData.referralLink);
             setCopiedLink(true);
             setTimeout(() => setCopiedLink(false), 2000);
         } catch (err) {
@@ -34,8 +80,16 @@ export default function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
         }
     };
 
-    const activeReferrals = referrals.filter(ref => ref.status === 'active').length;
-    const totalReferrals = referrals.length;
+    // Conceal email function
+    const concealEmail = (email: string) => {
+        const [localPart, domain] = email.split('@');
+        if (localPart.length <= 2) return `${localPart}***@${domain}`;
+        return `${localPart.substring(0, 2)}***@${domain}`;
+    };
+
+    const activeReferrals = referralData?.activeReferrals || 0;
+    const totalReferrals = referralData?.totalReferrals || 0;
+    const currentLevel = referralData?.level || 1;
 
     if (!isOpen) return null;
 
@@ -54,16 +108,34 @@ export default function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4">
                     <div className="space-y-6">
+                        {/* Current Level */}
+                        <div className="bg-gradient-to-r from-[#004B49] to-[#00695C] p-4 rounded-lg text-white">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                    <Crown size={20} className="text-[#FFD700]" />
+                                    <div>
+                                        <p className="text-sm opacity-80">Your Level</p>
+                                        <p className="text-2xl font-bold">Level {currentLevel}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs opacity-80">Next Level</p>
+                                    <p className="text-sm">{Math.ceil((currentLevel) * 5)} active referrals needed</p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Referral Link */}
                         <div className="bg-gray-50 p-4 rounded-lg">
                             <h4 className="text-sm font-medium text-gray-700 mb-2">Your Referral Link</h4>
                             <div className="flex items-center space-x-2">
                                 <code className="flex-1 font-mono text-sm bg-white p-3 rounded border break-all text-black">
-                                    {referralLink}
+                                    {referralData?.referralLink || 'Loading...'}
                                 </code>
                                 <button
                                     onClick={handleCopyLink}
-                                    className="p-3 bg-[#004B49] text-white rounded-lg hover:bg-[#00695C] transition-colors"
+                                    disabled={!referralData?.referralLink}
+                                    className="p-3 bg-[#004B49] text-white rounded-lg hover:bg-[#00695C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {copiedLink ? (
                                         <CheckCircle size={16} />
@@ -93,24 +165,35 @@ export default function ReferralModal({ isOpen, onClose }: ReferralModalProps) {
                         <div>
                             <h4 className="text-sm font-medium text-gray-700 mb-3">Your Referrals</h4>
                             <div className="space-y-2 max-h-60 overflow-y-auto">
-                                {referrals.map((referral, index) => (
-                                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                        <div className="flex items-center space-x-3">
-                                            <Users size={16} className="text-gray-400" />
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-900">{referral.name}</p>
-                                                <p className="text-xs text-gray-500">Joined {referral.joinedDate}</p>
-                                            </div>
-                                        </div>
-                                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                                            referral.status === 'active'
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-gray-200 text-gray-600'
-                                        }`}>
-                                            {referral.status === 'active' ? 'Active' : 'Inactive'}
-                                        </span>
+                                {isLoading ? (
+                                    <div className="text-center py-4">
+                                        <p className="text-sm text-gray-500">Loading referrals...</p>
                                     </div>
-                                ))}
+                                ) : referralData?.referredUsers && referralData.referredUsers.length > 0 ? (
+                                    referralData.referredUsers.map((referral, index) => (
+                                        <div key={referral.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                            <div className="flex items-center space-x-3">
+                                                <Users size={16} className="text-gray-400" />
+                                                <div>
+                                                    <p className="text-sm font-medium text-gray-900">{concealEmail(referral.email)}</p>
+                                                    <p className="text-xs text-gray-500">Joined {new Date(referral.joinedAt).toLocaleDateString()}</p>
+                                                </div>
+                                            </div>
+                                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                                                referral.isActive
+                                                    ? 'bg-green-100 text-green-800'
+                                                    : 'bg-gray-200 text-gray-600'
+                                            }`}>
+                                                {referral.isActive ? 'Active' : 'Inactive'}
+                                            </span>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-center py-4">
+                                        <p className="text-sm text-gray-500">No referrals yet</p>
+                                        <p className="text-xs text-gray-400 mt-1">Share your referral link to get started!</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

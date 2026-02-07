@@ -1,7 +1,8 @@
 'use client';
 
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "@descope/react-sdk";
 import DepositModal from "./deposit-modal";
 import WithdrawalModal from "./withdrawal-modal";
 import TransferModal from "./transfer-modal";
@@ -10,11 +11,66 @@ interface BalanceAreaProps {
     isLoggedIn: boolean;
 }
 
+interface Balance {
+    cash: number;
+    portfolio: number;
+    lockedFunds: number;
+    lockedUntil: Date | null;
+    total: number;
+}
+
 export default function BalanceArea({ isLoggedIn }: BalanceAreaProps) {
+    const { sessionToken } = useSession();
     const [visible, setVisible] = useState(false);
     const [showDepositModal, setShowDepositModal] = useState(false);
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
+    const [balance, setBalance] = useState<Balance>({ cash: 0, portfolio: 0, lockedFunds: 0, lockedUntil: null, total: 0 });
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Fetch balance data when logged in
+    useEffect(() => {
+        if (isLoggedIn) {
+            fetchBalance();
+        }
+    }, [isLoggedIn]);
+
+    const fetchBalance = async () => {
+        try {
+            setIsLoading(true);
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+            if (!apiBaseUrl) {
+                console.error('API URL not configured');
+                return;
+            }
+
+            const response = await fetch(`${apiBaseUrl}/api/transactions/balance`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setBalance(data.balance);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch balance:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Refresh balance after transactions
+    const refreshBalance = () => {
+        fetchBalance();
+    };
 
     if (!isLoggedIn) {
         return (
@@ -35,7 +91,9 @@ export default function BalanceArea({ isLoggedIn }: BalanceAreaProps) {
                 <div className="grid grid-cols-3 gap-6 items-center">
                     <div className="text-left">
                         <p className="text-[10px] text-gray-600 uppercase tracking-wide">Total Wealth</p>
-                        <p className="text-base font-bold text-gray-900">{visible ? '$12,345.67' : '****'}</p>
+                        <p className="text-base font-bold text-gray-900">
+                            {isLoading ? '...' : visible ? `$${balance.total.toFixed(2)}` : '****'}
+                        </p>
                     </div>
                     <div className="flex justify-center">
                         {visible ? (
@@ -46,7 +104,9 @@ export default function BalanceArea({ isLoggedIn }: BalanceAreaProps) {
                     </div>
                     <div className="text-left">
                         <p className="text-[10px] text-gray-600 uppercase tracking-wide">Cash Wallet</p>
-                        <p className="text-base font-bold text-gray-900">{visible ? '$1,234.56' : '****'}</p>
+                        <p className="text-base font-bold text-gray-900">
+                            {isLoading ? '...' : visible ? `$${balance.cash.toFixed(2)}` : '****'}
+                        </p>
                     </div>
                 </div>
                 <div className="flex justify-center space-x-4 mt-4">
@@ -77,6 +137,7 @@ export default function BalanceArea({ isLoggedIn }: BalanceAreaProps) {
             <DepositModal
                 isOpen={showDepositModal}
                 onClose={() => setShowDepositModal(false)}
+                onDepositSuccess={refreshBalance}
             />
 
             <WithdrawalModal

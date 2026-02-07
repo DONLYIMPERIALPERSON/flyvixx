@@ -1,26 +1,103 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, TrendingUp, Calendar, Plane, Share2 } from "lucide-react";
+import { useSession } from "@descope/react-sdk";
+
+interface PortfolioInfo {
+    hasLockedFunds: boolean;
+    lockedFunds: number;
+    lockedUntil: string | null;
+    daysLeft: number;
+    portfolioBalance: number;
+    canLockFunds: boolean;
+    level?: number;
+    activeReferrals?: number;
+}
 
 interface PortfolioModalProps {
     isOpen: boolean;
     onClose: () => void;
+    portfolioInfo?: PortfolioInfo | null;
 }
 
-export default function PortfolioModal({ isOpen, onClose }: PortfolioModalProps) {
+export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo }: PortfolioModalProps) {
+    const { sessionToken } = useSession();
     const [shareMessage, setShareMessage] = useState('');
+    const [portfolioInfo, setPortfolioInfo] = useState<PortfolioInfo | null>(initialPortfolioInfo || null);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Mock data
-    const daysLeft = 15; // out of 30
+    // Fetch fresh portfolio data when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchPortfolioInfo();
+        }
+    }, [isOpen]);
+
+    // Update local state when props change
+    useEffect(() => {
+        if (initialPortfolioInfo) {
+            setPortfolioInfo(initialPortfolioInfo);
+        }
+    }, [initialPortfolioInfo]);
+
+    const fetchPortfolioInfo = async () => {
+        try {
+            setIsLoading(true);
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+            if (!apiBaseUrl) {
+                console.error('API URL not configured');
+                return;
+            }
+
+            console.log('Fetching portfolio info...');
+            const response = await fetch(`${apiBaseUrl}/api/transactions/portfolio`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('Portfolio API response:', data);
+                if (data.success) {
+                    console.log('Setting portfolio info:', data.portfolio);
+                    setPortfolioInfo(data.portfolio);
+                } else {
+                    console.log('API returned success=false');
+                }
+            } else {
+                console.log('API response not ok:', response.status);
+            }
+        } catch (error) {
+            console.error('Failed to fetch portfolio info in modal:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Use real data or defaults
+    const daysLeft = portfolioInfo?.daysLeft || 0;
     const totalDays = 30;
-    const profitMade = 245.67;
-    const todaysFlights = 8;
-    const aircraftName = 'Aircraft-1234567890';
-    const currentLevel = 4;
-    const lockedAmount = 120.00; // Amount currently locked in portfolio
+    const profitMade = 245.67; // This would come from actual profit calculations
+    const todaysFlights = 8; // This would come from actual flight data
+    const aircraftName = `Aircraft-${Date.now().toString().slice(-10)}`;
+    const currentLevel = portfolioInfo?.level || 1;
+    const lockedAmount = portfolioInfo?.lockedFunds || 0;
 
-    const progressPercentage = ((totalDays - daysLeft) / totalDays) * 100;
+    // Debug logging
+    console.log('PortfolioModal render:', {
+        portfolioInfo,
+        hasLockedFunds: portfolioInfo?.hasLockedFunds,
+        daysLeft,
+        calculation: portfolioInfo?.hasLockedFunds ? `${Math.min(30, 31 - daysLeft)}/${totalDays}` : '0/30'
+    });
+
+
 
     const handleShare = () => {
         setShareMessage('Portfolio shared successfully!');
@@ -32,7 +109,7 @@ export default function PortfolioModal({ isOpen, onClose }: PortfolioModalProps)
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
-            <div className={`bg-white rounded-t-xl w-full max-w-md transform transition-transform duration-300 flex flex-col relative ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+            <div className={`bg-white rounded-t-xl w-full max-w-md h-[85vh] transform transition-transform duration-300 flex flex-col relative ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}>
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
                     <h3 className="text-lg font-bold text-[#004B49]">Portfolio Details</h3>
@@ -80,24 +157,32 @@ export default function PortfolioModal({ isOpen, onClose }: PortfolioModalProps)
                             </div>
                         </div>
 
-                        {/* Progress Bar - Days Left */}
+                        {/* Days Counter */}
                         <div className="mb-6">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm opacity-80 flex items-center">
                                     <Calendar size={14} className="mr-1" />
-                                    Days Left
+                                    Lock Period
                                 </span>
-                                <span className="text-sm font-bold">{daysLeft} days</span>
+                                <span className="text-lg font-bold text-[#FFD700]">
+                                    {portfolioInfo?.hasLockedFunds ? `${30 - daysLeft}/${totalDays}` : '0/30'}
+                                </span>
                             </div>
-                            <div className="w-full bg-white/20 rounded-full h-3">
-                                <div
-                                    className="bg-[#FFD700] h-3 rounded-full transition-all duration-500"
-                                    style={{ width: `${progressPercentage}%` }}
-                                ></div>
-                            </div>
-                            <div className="flex justify-between text-xs opacity-70 mt-1">
-                                <span>0</span>
-                                <span>{totalDays} days</span>
+                            {/* Progress Bar */}
+                            {portfolioInfo?.hasLockedFunds && (
+                                <div className="mb-2">
+                                    <div className="w-full bg-white/20 rounded-full h-2">
+                                        <div
+                                            className="bg-[#FFD700] h-2 rounded-full transition-all duration-300"
+                                            style={{ width: `${((30 - daysLeft) / 30) * 100}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            )}
+                            <div className="text-center">
+                                <p className="text-xs opacity-70">
+                                    {daysLeft > 0 ? `${daysLeft} days remaining` : 'Lock period completed'}
+                                </p>
                             </div>
                         </div>
 

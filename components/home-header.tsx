@@ -1,20 +1,17 @@
 'use client';
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { Search, Bell, User } from "lucide-react";
 import NotificationModal from "./notification-modal";
 import SearchModal from "./search-modal";
-import ProfileModal from "./profile-modal";
+import { useNotifications } from "../hooks/useNotifications";
 
-// Mock notification data for unread count
-const mockNotifications = [
-    { id: 1, read: false },
-    { id: 2, read: false },
-    { id: 3, read: false },
-    { id: 4, read: true },
-    { id: 5, read: true },
-    { id: 6, read: true }
-];
+// Dynamically import ProfileModal to prevent SSR hydration issues
+const ProfileModal = dynamic(() => import("./profile-modal"), {
+    ssr: false,
+    loading: () => null
+});
 
 interface HomeHeaderProps {
     isLoggedIn: boolean;
@@ -24,7 +21,7 @@ export default function HomeHeader({ isLoggedIn }: HomeHeaderProps) {
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [showSearchModal, setShowSearchModal] = useState(false);
     const [showProfileModal, setShowProfileModal] = useState(false);
-    const unreadCount = mockNotifications.filter(n => !n.read).length;
+    const { unreadCount } = useNotifications();
 
     return (
         <>

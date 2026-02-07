@@ -7,7 +7,7 @@ import LenisScroll from "@/components/lenis";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/bottom-nav";
 import LoginModal from "@/components/login-modal";
-import { useLogin } from "@/components/login-context";
+import { useAuth } from "@/components/login-modal";
 import PWARegister from "@/components/pwa-register";
 
 interface ClientLayoutProps {
@@ -15,7 +15,7 @@ interface ClientLayoutProps {
 }
 
 export default function ClientLayout({ children }: ClientLayoutProps) {
-    const { isLoggedIn, setIsLoggedIn } = useLogin();
+    const { isAuthenticated } = useAuth();
     const [showLoginModal, setShowLoginModal] = useState(false);
     const pathname = usePathname();
 
@@ -26,17 +26,14 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
             <LenisScroll />
             {children}
             <BottomNav
-                isLoggedIn={isLoggedIn}
+                isLoggedIn={isAuthenticated}
                 onOpenLogin={() => setShowLoginModal(true)}
-                onLogin={() => setIsLoggedIn(true)}
+                onLogin={() => {}} // Handled by Descope session
             />
             <LoginModal
                 isOpen={showLoginModal}
                 onClose={() => setShowLoginModal(false)}
-                onLogin={() => {
-                    setIsLoggedIn(true);
-                    setShowLoginModal(false);
-                }}
+                onLogin={() => setShowLoginModal(false)} // Handled by Descope session
             />
             {pathname !== '/' && pathname !== '/transactions' && pathname !== '/support' && pathname !== '/fly' && <Footer />}
         </>

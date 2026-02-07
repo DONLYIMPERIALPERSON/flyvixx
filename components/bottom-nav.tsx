@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Home, Plane, Clock, HelpCircle, ChevronRight } from "lucide-react";
 
 interface BottomNavProps {
@@ -11,8 +12,17 @@ interface BottomNavProps {
 
 export default function BottomNav({ isLoggedIn, onOpenLogin, onLogin }: BottomNavProps) {
     const router = useRouter();
+    const [isHydrated, setIsHydrated] = useState(false);
 
-    if (!isLoggedIn) {
+    // Prevent hydration mismatch by showing consistent initial state
+    useEffect(() => {
+        setIsHydrated(true);
+    }, []);
+
+    // During SSR and initial hydration, show the logged-out state to match server render
+    const shouldShowLoggedIn = isHydrated && isLoggedIn;
+
+    if (!shouldShowLoggedIn) {
         return (
             <nav className="fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-lg border-t border-white/20 p-4">
                 <div className="flex justify-center items-center">

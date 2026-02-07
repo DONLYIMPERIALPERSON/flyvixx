@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from "react";
-import { X, Copy, CheckCircle, AlertCircle, Clock } from "lucide-react";
+import { X, Copy, CheckCircle, AlertCircle, Clock, Loader2 } from "lucide-react";
+import { useSession } from "@descope/react-sdk";
 
 interface DepositModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onDepositSuccess?: () => void;
 }
 
 const depositAddresses = {
@@ -20,11 +22,24 @@ const bankDetails = {
     expiresIn: 30 // minutes
 };
 
-export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
-    const [activeTab, setActiveTab] = useState<'btc' | 'usdt' | 'bank'>('btc');
+// Exchange rate: 1500 NGN per USD (our system rate)
+const EXCHANGE_RATE = 1500;
+
+interface VirtualAccount {
+    accountNumber: string;
+    accountName: string;
+    bankCode: string;
+    expiryDate: string;
+}
+
+export default function DepositModal({ isOpen, onClose, onDepositSuccess }: DepositModalProps) {
+    const { sessionToken } = useSession();
+    const [activeTab, setActiveTab] = useState<'btc' | 'usdt' | 'bank'>('bank');
     const [depositAmount, setDepositAmount] = useState('');
     const [showBankDetails, setShowBankDetails] = useState(false);
     const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [virtualAccount, setVirtualAccount] = useState<VirtualAccount | null>(null);
 
     const handleCopyAddress = async (address: string) => {
         try {
@@ -36,18 +51,55 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
         }
     };
 
-    const handleTopUp = () => {
-        if (!depositAmount || parseFloat(depositAmount) <= 0) {
-            alert('Please enter a valid amount');
+    const handleTopUp = async () => {
+        const amount = parseFloat(depositAmount);
+        if (!amount || amount < 5) {
+            alert('Minimum deposit amount is $5');
             return;
         }
-        setShowBankDetails(true);
+
+        try {
+            setIsProcessing(true);
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+            const response = await fetch(`${apiBaseUrl}/api/safehaven/virtual-account`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                credentials: 'include',
+                body: JSON.stringify({ amount })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.data) {
+                setVirtualAccount({
+                    accountNumber: data.data.accountNumber,
+                    accountName: data.data.accountName,
+                    bankCode: data.data.bankCode,
+                    expiryDate: data.data.expiryDate
+                });
+                setShowBankDetails(true);
+            } else {
+                alert('Failed to create virtual account: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Virtual account creation error:', error);
+            alert('Failed to create virtual account. Please try again.');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const resetBankDeposit = () => {
         setDepositAmount('');
         setShowBankDetails(false);
+        setVirtualAccount(null);
     };
+
+
 
     if (!isOpen) return null;
 
@@ -66,9 +118,9 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                 {/* Tab Navigation */}
                 <div className="flex border-b border-gray-200 flex-shrink-0">
                     {[
+                        { key: 'bank', label: 'Bank Transfer' },
                         { key: 'btc', label: 'BTC' },
-                        { key: 'usdt', label: 'USDT' },
-                        { key: 'bank', label: 'Bank Transfer' }
+                        { key: 'usdt', label: 'USDT' }
                     ].map((tab) => (
                         <button
                             key={tab.key}
@@ -95,48 +147,16 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                                 <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <span className="text-2xl font-bold text-white">₿</span>
                                 </div>
-                                <h4 className="text-lg font-semibold text-gray-900 mb-2">Deposit BTC</h4>
+                                <h4 className="text-lg font-semibold text-gray-900 mb-2">BTC Deposits</h4>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Send BTC to the address below. Deposits usually reflect within 10 minutes.
+                                    Currently not available
                                 </p>
                             </div>
 
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    BTC Deposit Address
-                                </label>
-                                <div className="flex items-center space-x-2">
-                                    <code className="flex-1 font-mono text-sm bg-white p-3 rounded border break-all text-black">
-                                        {depositAddresses.btc}
-                                    </code>
-                                    <button
-                                        onClick={() => handleCopyAddress(depositAddresses.btc)}
-                                        className="p-3 bg-[#004B49] text-white rounded-lg hover:bg-[#00695C] transition-colors"
-                                    >
-                                        {copiedAddress === depositAddresses.btc ? (
-                                            <CheckCircle size={16} />
-                                        ) : (
-                                            <Copy size={16} />
-                                        )}
-                                    </button>
-                                </div>
-                                {copiedAddress === depositAddresses.btc && (
-                                    <p className="text-xs text-green-600 mt-2">Address copied to clipboard!</p>
-                                )}
-                            </div>
-
-                            <div className="bg-blue-50 p-4 rounded-lg">
-                                <div className="flex items-start space-x-2">
-                                    <AlertCircle size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm text-black font-medium">Important:</p>
-                                        <ul className="text-sm text-black mt-1 space-y-1">
-                                            <li>• Send only BTC to this address</li>
-                                            <li>• Minimum deposit: 0.0001 BTC</li>
-                                            <li>• Deposits below minimum may be lost</li>
-                                        </ul>
-                                    </div>
-                                </div>
+                            <div className="bg-gray-50 p-6 rounded-lg text-center">
+                                <p className="text-sm text-gray-700">
+                                    BTC deposits are temporarily unavailable. Please use Bank Transfer for deposits at this time.
+                                </p>
                             </div>
                         </div>
                     )}
@@ -147,48 +167,16 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <span className="text-2xl font-bold text-white">₮</span>
                                 </div>
-                                <h4 className="text-lg font-semibold text-gray-900 mb-2">Deposit USDT</h4>
+                                <h4 className="text-lg font-semibold text-gray-900 mb-2">USDT Deposits</h4>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Send USDT (TRC20) to the address below. Deposits usually reflect within 5 minutes.
+                                    Currently not available
                                 </p>
                             </div>
 
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
-                                    USDT (TRC20) Deposit Address
-                                </label>
-                                <div className="flex items-center space-x-2">
-                                    <code className="flex-1 font-mono text-sm bg-white p-3 rounded border break-all text-black">
-                                        {depositAddresses.usdt}
-                                    </code>
-                                    <button
-                                        onClick={() => handleCopyAddress(depositAddresses.usdt)}
-                                        className="p-3 bg-[#004B49] text-white rounded-lg hover:bg-[#00695C] transition-colors"
-                                    >
-                                        {copiedAddress === depositAddresses.usdt ? (
-                                            <CheckCircle size={16} />
-                                        ) : (
-                                            <Copy size={16} />
-                                        )}
-                                    </button>
-                                </div>
-                                {copiedAddress === depositAddresses.usdt && (
-                                    <p className="text-xs text-green-600 mt-2">Address copied to clipboard!</p>
-                                )}
-                            </div>
-
-                            <div className="bg-blue-50 p-4 rounded-lg">
-                                <div className="flex items-start space-x-2">
-                                    <AlertCircle size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm text-black font-medium">Important:</p>
-                                        <ul className="text-sm text-black mt-1 space-y-1">
-                                            <li>• Send only USDT (TRC20) to this address</li>
-                                            <li>• Minimum deposit: 10 USDT</li>
-                                            <li>• Use TRC20 network only</li>
-                                        </ul>
-                                    </div>
-                                </div>
+                            <div className="bg-gray-50 p-6 rounded-lg text-center">
+                                <p className="text-sm text-gray-700">
+                                    USDT deposits are temporarily unavailable. Please use Bank Transfer for deposits at this time.
+                                </p>
                             </div>
                         </div>
                     )}
@@ -211,20 +199,28 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                                 </label>
                                 <input
                                     type="number"
-                                    placeholder="Enter amount (min. $1)"
+                                    placeholder="Enter amount (min. $5)"
                                     value={depositAmount}
                                     onChange={(e) => setDepositAmount(e.target.value)}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004B49] focus:border-transparent text-black"
                                     style={{ fontSize: '16px' }}
-                                    min="1"
+                                    min="5"
                                 />
                             </div>
 
                             <button
                                 onClick={handleTopUp}
-                                className="w-full bg-[#004B49] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors"
+                                disabled={isProcessing}
+                                className="w-full bg-[#004B49] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                             >
-                                Top Up Now
+                                {isProcessing ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin mr-2" />
+                                        Creating Account...
+                                    </>
+                                ) : (
+                                    'Top Up Now'
+                                )}
                             </button>
 
                             <div className="bg-blue-50 p-4 rounded-lg">
@@ -244,13 +240,13 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                         </div>
                     )}
 
-                    {activeTab === 'bank' && showBankDetails && (
+                    {activeTab === 'bank' && showBankDetails && virtualAccount && (
                         <div className="space-y-4">
                             <div className="text-center">
                                 <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
                                 <h4 className="text-lg font-semibold text-gray-900 mb-2">Transfer Details</h4>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Transfer exactly <span className="font-bold text-[#004B49]">₦{(parseFloat(depositAmount) * 1450).toLocaleString()}</span> to the account below
+                                    Transfer exactly <span className="font-bold text-[#004B49]">₦{(parseFloat(depositAmount) * EXCHANGE_RATE).toLocaleString()}</span> to the account below
                                 </p>
                             </div>
 
@@ -259,7 +255,7 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Account Name
                                     </label>
-                                    <p className="text-black font-medium">{bankDetails.accountName}</p>
+                                    <p className="text-black font-medium">{virtualAccount.accountName}</p>
                                 </div>
 
                                 <div>
@@ -267,12 +263,12 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                                         Account Number
                                     </label>
                                     <div className="flex items-center space-x-2">
-                                        <p className="text-black font-mono font-medium">{bankDetails.accountNumber}</p>
+                                        <p className="text-black font-mono font-medium">{virtualAccount.accountNumber}</p>
                                         <button
-                                            onClick={() => handleCopyAddress(bankDetails.accountNumber)}
+                                            onClick={() => handleCopyAddress(virtualAccount.accountNumber)}
                                             className="p-2 bg-[#004B49] text-white rounded hover:bg-[#00695C] transition-colors"
                                         >
-                                            {copiedAddress === bankDetails.accountNumber ? (
+                                            {copiedAddress === virtualAccount.accountNumber ? (
                                                 <CheckCircle size={14} />
                                             ) : (
                                                 <Copy size={14} />
@@ -285,13 +281,13 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Bank Name
                                     </label>
-                                    <p className="text-black font-medium">{bankDetails.bankName}</p>
+                                    <p className="text-black font-medium">SAFE HAVEN MICROFINANCE BANK</p>
                                 </div>
 
                                 <div className="flex items-center space-x-2 pt-2 border-t border-gray-200">
                                     <Clock size={16} className="text-orange-500" />
                                     <p className="text-sm text-orange-700">
-                                        Expires in {bankDetails.expiresIn} minutes
+                                        Expires: {new Date(virtualAccount.expiryDate).toLocaleString()}
                                     </p>
                                 </div>
                             </div>
@@ -302,9 +298,9 @@ export default function DepositModal({ isOpen, onClose }: DepositModalProps) {
                                     <div>
                                         <p className="text-sm text-yellow-800 font-medium">Important:</p>
                                         <ul className="text-sm text-yellow-700 mt-1 space-y-1">
-                                            <li>• Transfer the exact amount: ₦{(parseFloat(depositAmount) * 1450).toLocaleString()}</li>
+                                            <li>• Transfer the exact amount: ₦{(parseFloat(depositAmount) * EXCHANGE_RATE).toLocaleString()}</li>
                                             <li>• Use the account details above only</li>
-                                            <li>• Account expires in 30 minutes</li>
+                                            <li>• Account expires at the time shown above</li>
                                             <li>• Contact support if payment doesn't reflect</li>
                                         </ul>
                                     </div>

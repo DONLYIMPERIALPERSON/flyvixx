@@ -1,0 +1,7 @@
+tunnel: flyvixx-backend
+credentials-file: /Users/mac/.cloudflared/c4db6679-e22a-4726-8a95-c6d9e9776f21.json
+
+ingress:
+  - hostname: api.flyvixx.com
+    service: http://localhost:3001
+  - service: http_status:404

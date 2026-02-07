@@ -1,91 +1,73 @@
 'use client';
 
-import { X, Bell, DollarSign, Users, TrendingUp, Clock } from "lucide-react";
+import { X, Bell, DollarSign, Users, TrendingUp, Clock, Loader2 } from "lucide-react";
+import { useNotifications, Notification as NotificationType } from "../hooks/useNotifications";
 
 interface NotificationModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-interface Notification {
-    id: number;
-    type: 'payment' | 'referral' | 'system' | 'reward';
-    title: string;
-    message: string;
-    time: string;
-    read: boolean;
-}
-
-const mockNotifications: Notification[] = [
-    {
-        id: 1,
-        type: 'payment',
-        title: 'Payment Received',
-        message: 'You have received $50.00 from your daily flight earnings',
-        time: '2 minutes ago',
-        read: false
-    },
-    {
-        id: 2,
-        type: 'referral',
-        title: 'New Referral Joined',
-        message: 'John Doe has joined using your referral link',
-        time: '15 minutes ago',
-        read: false
-    },
-    {
-        id: 3,
-        type: 'reward',
-        title: 'Level Up Bonus',
-        message: 'Congratulations! You reached Level 3 and earned $25 bonus',
-        time: '1 hour ago',
-        read: false
-    },
-    {
-        id: 4,
-        type: 'system',
-        title: 'Daily Flight Available',
-        message: 'Your daily flight power has been reset. Start earning now!',
-        time: '2 hours ago',
-        read: true
-    },
-    {
-        id: 5,
-        type: 'payment',
-        title: 'Weekly Bonus',
-        message: 'You earned $15.50 from your weekly referral bonus',
-        time: '1 day ago',
-        read: true
-    },
-    {
-        id: 6,
-        type: 'referral',
-        title: 'Referral Milestone',
-        message: 'You now have 5 active referrals. Keep growing your network!',
-        time: '2 days ago',
-        read: true
-    }
-];
-
 const getNotificationIcon = (type: string) => {
     switch (type) {
-        case 'payment':
+        case 'deposit':
+        case 'withdrawal':
             return <DollarSign className="w-5 h-5 text-green-500" />;
         case 'referral':
             return <Users className="w-5 h-5 text-blue-500" />;
-        case 'reward':
+        case 'lock_funds':
+        case 'unlock_funds':
             return <TrendingUp className="w-5 h-5 text-purple-500" />;
         case 'system':
+        case 'reward':
             return <Bell className="w-5 h-5 text-orange-500" />;
         default:
             return <Bell className="w-5 h-5 text-gray-500" />;
     }
 };
 
+const getNotificationTitle = (notification: NotificationType) => {
+    switch (notification.type) {
+        case 'deposit':
+            return 'Deposit Received';
+        case 'withdrawal':
+            return 'Withdrawal Processed';
+        case 'lock_funds':
+            return 'Funds Locked';
+        case 'unlock_funds':
+            return 'Funds Unlocked';
+        case 'referral':
+            return 'New Friend Joined';
+        case 'system':
+            return 'System Notification';
+        case 'reward':
+            return 'Reward Earned';
+        default:
+            return notification.title || 'Notification';
+    }
+};
+
 export default function NotificationModal({ isOpen, onClose }: NotificationModalProps) {
+    const {
+        notifications,
+        unreadCount,
+        loading,
+        markAsRead,
+        markAllAsRead,
+        formatTimeAgo
+    } = useNotifications();
+
     if (!isOpen) return null;
 
-    const unreadCount = mockNotifications.filter(n => !n.read).length;
+    const handleNotificationClick = async (notification: NotificationType) => {
+        if (!notification.read) {
+            await markAsRead(notification.id);
+        }
+    };
+
+    const handleMarkAllRead = async () => {
+        await markAllAsRead();
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-end justify-center">
@@ -109,40 +91,47 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
 
                 {/* Notifications List */}
                 <div className="flex-1 overflow-y-auto">
-                    <div className="divide-y divide-gray-100">
-                        {mockNotifications.map((notification) => (
-                            <div
-                                key={notification.id}
-                                className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                            >
-                                <div className="flex items-start space-x-3">
-                                    <div className="flex-shrink-0 mt-1">
-                                        {getNotificationIcon(notification.type)}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className={`text-sm font-medium ${
-                                            notification.read ? 'text-gray-900' : 'text-gray-900 font-semibold'
-                                        }`}>
-                                            {notification.title}
-                                        </p>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            {notification.message}
-                                        </p>
-                                        <p className="text-xs text-gray-400 mt-2">
-                                            {notification.time}
-                                        </p>
-                                    </div>
-                                    {!notification.read && (
-                                        <div className="flex-shrink-0">
-                                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    {loading ? (
+                        <div className="flex items-center justify-center h-64">
+                            <Loader2 className="w-8 h-8 animate-spin text-[#004B49]" />
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-100">
+                            {notifications.map((notification) => (
+                                <div
+                                    key={notification.id}
+                                    className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    onClick={() => handleNotificationClick(notification)}
+                                >
+                                    <div className="flex items-start space-x-3">
+                                        <div className="flex-shrink-0 mt-1">
+                                            {getNotificationIcon(notification.type)}
                                         </div>
-                                    )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className={`text-sm font-medium ${
+                                                notification.read ? 'text-gray-900' : 'text-gray-900 font-semibold'
+                                            }`}>
+                                                {getNotificationTitle(notification)}
+                                            </p>
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                {notification.message}
+                                            </p>
+                                            <p className="text-xs text-gray-400 mt-2">
+                                                {formatTimeAgo(notification.createdAt)}
+                                            </p>
+                                        </div>
+                                        {!notification.read && (
+                                            <div className="flex-shrink-0">
+                                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
 
-                    {mockNotifications.length === 0 && (
+                    {!loading && notifications.length === 0 && (
                         <div className="flex flex-col items-center justify-center h-64 text-gray-500">
                             <Bell className="w-12 h-12 mb-4 opacity-50" />
                             <p className="text-center">No notifications yet</p>
@@ -152,11 +141,16 @@ export default function NotificationModal({ isOpen, onClose }: NotificationModal
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-gray-200 flex-shrink-0">
-                    <button className="w-full bg-[#004B49] text-white py-2 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors">
-                        Mark All as Read
-                    </button>
-                </div>
+                {unreadCount > 0 && (
+                    <div className="p-4 border-t border-gray-200 flex-shrink-0">
+                        <button
+                            onClick={handleMarkAllRead}
+                            className="w-full bg-[#004B49] text-white py-2 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors"
+                        >
+                            Mark All as Read
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );

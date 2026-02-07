@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from "react";
-import { X, CheckCircle, AlertCircle } from "lucide-react";
+import { X, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { useSession } from "@descope/react-sdk";
 
 interface TransferModalProps {
     isOpen: boolean;
@@ -9,34 +10,116 @@ interface TransferModalProps {
 }
 
 export default function TransferModal({ isOpen, onClose }: TransferModalProps) {
+    const { sessionToken } = useSession();
     const [transferAmount, setTransferAmount] = useState('');
     const [recipientEmail, setRecipientEmail] = useState('');
     const [otpCode, setOtpCode] = useState('');
     const [showOtpVerification, setShowOtpVerification] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [isSendingOtp, setIsSendingOtp] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-    const handleTransfer = () => {
+    const handleTransfer = async () => {
         const amount = parseFloat(transferAmount);
         if (!amount || amount <= 0) {
             alert('Please enter a valid transfer amount');
+            return;
+        }
+        if (amount < 1) {
+            alert('Minimum transfer amount is $1');
             return;
         }
         if (!recipientEmail || !recipientEmail.includes('@')) {
             alert('Please enter a valid recipient email');
             return;
         }
-        setShowOtpVerification(true);
+
+        try {
+            setIsSendingOtp(true);
+            setErrorMessage(null);
+
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+            // Send OTP first
+            const otpResponse = await fetch(`${apiBaseUrl}/api/otp/send`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                credentials: 'include'
+            });
+
+            const otpData = await otpResponse.json();
+
+            if (otpData.success) {
+                setShowOtpVerification(true);
+            } else {
+                alert(otpData.error || 'Failed to send OTP');
+            }
+        } catch (error) {
+            console.error('OTP send error:', error);
+            alert('Failed to send OTP. Please try again.');
+        } finally {
+            setIsSendingOtp(false);
+        }
     };
 
-    const handleOtpVerify = () => {
-        if (otpCode === '123456') { // Mock OTP verification
-            alert(`Transfer of $${transferAmount} to ${recipientEmail} completed successfully!`);
-            setShowOtpVerification(false);
-            setTransferAmount('');
-            setRecipientEmail('');
-            setOtpCode('');
-            onClose();
-        } else {
-            alert('Invalid OTP. Please try again.');
+    const handleOtpVerify = async () => {
+        try {
+            setIsProcessing(true);
+            setErrorMessage(null);
+
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+
+            // Verify OTP
+            const verifyResponse = await fetch(`${apiBaseUrl}/api/otp/verify`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                credentials: 'include',
+                body: JSON.stringify({ code: otpCode })
+            });
+
+            const verifyData = await verifyResponse.json();
+
+            if (verifyData.success) {
+                // OTP verified, proceed with transfer
+                const transferResponse = await fetch(`${apiBaseUrl}/api/transactions/transfer`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        amount: parseFloat(transferAmount),
+                        recipientEmail: recipientEmail
+                    })
+                });
+
+                const transferData = await transferResponse.json();
+
+                if (transferData.success) {
+                    alert(`Transfer of $${transferAmount} to ${recipientEmail} completed successfully!`);
+                    setShowOtpVerification(false);
+                    setTransferAmount('');
+                    setRecipientEmail('');
+                    setOtpCode('');
+                    onClose();
+                } else {
+                    setErrorMessage(transferData.error || 'Transfer failed');
+                }
+            } else {
+                setErrorMessage(verifyData.error || 'Invalid OTP code');
+            }
+        } catch (error) {
+            console.error('Transfer error:', error);
+            setErrorMessage('Failed to process transfer. Please try again.');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -85,15 +168,24 @@ export default function TransferModal({ isOpen, onClose }: TransferModalProps) {
                             <div className="flex space-x-3">
                                 <button
                                     onClick={handleCancel}
-                                    className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-600 transition-colors"
+                                    disabled={isProcessing}
+                                    className="flex-1 bg-gray-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-gray-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     onClick={handleOtpVerify}
-                                    className="flex-1 bg-[#004B49] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors"
+                                    disabled={isProcessing}
+                                    className="flex-1 bg-[#004B49] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
                                 >
-                                    Confirm Transfer
+                                    {isProcessing ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin mr-2" />
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        'Confirm Transfer'
+                                    )}
                                 </button>
                             </div>
 
@@ -145,10 +237,17 @@ export default function TransferModal({ isOpen, onClose }: TransferModalProps) {
                             {/* Transfer Button */}
                             <button
                                 onClick={handleTransfer}
-                                disabled={!transferAmount || !recipientEmail}
-                                className="w-full bg-[#004B49] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                disabled={!transferAmount || !recipientEmail || isSendingOtp}
+                                className="w-full bg-[#004B49] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
                             >
-                                Transfer Funds
+                                {isSendingOtp ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin mr-2" />
+                                        Sending OTP...
+                                    </>
+                                ) : (
+                                    'Transfer Funds'
+                                )}
                             </button>
 
                             {/* Warning */}

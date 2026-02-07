@@ -2,7 +2,7 @@ import { Geist, Urbanist } from "next/font/google";
 import "./globals.css";
 import { Metadata } from "next";
 import ClientLayout from "@/components/client-layout";
-import { LoginProvider } from "@/components/login-context";
+import Providers from "@/components/providers";
 
 const geist = Geist({
     variable: "--font-sans",
@@ -54,9 +54,9 @@ export default function RootLayout({
     return (
         <html lang="en">
             <body>
-                <LoginProvider>
+                <Providers>
                     <ClientLayout>{children}</ClientLayout>
-                </LoginProvider>
+                </Providers>
             </body>
         </html>
     );

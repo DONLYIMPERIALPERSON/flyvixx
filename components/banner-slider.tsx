@@ -102,10 +102,10 @@ export default function BannerSlider() {
                             <div className="absolute top-6 right-6 opacity-20 animate-pulse">
                                 <Shield className={`w-6 h-6 ${slide.textColor}`} />
                             </div>
-                            <div className="absolute bottom-6 left-6 opacity-20 animate-pulse" style={{animationDelay: '1s'}}>
+                            <div className="absolute bottom-6 right-6 opacity-20 animate-pulse" style={{animationDelay: '1s'}}>
                                 <Zap className={`w-5 h-5 ${slide.textColor}`} />
                             </div>
-                            <div className="absolute top-1/2 left-8 opacity-10 animate-bounce" style={{animationDelay: '2s'}}>
+                            <div className="absolute top-1/2 right-8 opacity-10 animate-bounce" style={{animationDelay: '2s'}}>
                                 <Clock className={`w-4 h-4 ${slide.textColor}`} />
                             </div>
                         </div>
