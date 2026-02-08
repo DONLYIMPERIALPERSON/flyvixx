@@ -112,32 +112,30 @@ export class AdminDashboardService {
 
       const totalAdminApprovedPayout = parseFloat(totalAdminApprovedPayoutResult?.total || '0');
 
-      // 9. Total Admin Withdrawal - same as admin approved payout for now
-      const totalAdminWithdrawal = totalAdminApprovedPayout;
+      // 9. Total Admin Withdrawal - admin cashouts from profit page
+      const totalAdminWithdrawalResult = await transactionRepository
+        .createQueryBuilder('transaction')
+        .select('SUM(transaction.amount)', 'total')
+        .where('transaction.type = :type', { type: TransactionType.ADMIN_CASHOUT })
+        .andWhere('transaction.status = :status', { status: TransactionStatus.COMPLETED })
+        .getRawOne();
 
-      // 10. All Time Debit - sum of all debit transactions (withdrawals, bets placed, transfers out)
+      const totalAdminWithdrawal = parseFloat(totalAdminWithdrawalResult?.total || '0');
+
+      // 10. All Time Debit - total withdrawals (users + admin cashouts)
       const allTimeDebitResult = await transactionRepository
         .createQueryBuilder('transaction')
         .select('SUM(transaction.amount)', 'total')
         .where('transaction.type IN (:...types)', {
-          types: [TransactionType.WITHDRAWAL, TransactionType.BET_PLACED, TransactionType.TRANSFER, TransactionType.LOCK_FUNDS]
+          types: [TransactionType.WITHDRAWAL, TransactionType.ADMIN_CASHOUT]
         })
         .andWhere('transaction.status = :status', { status: TransactionStatus.COMPLETED })
         .getRawOne();
 
       const allTimeDebit = parseFloat(allTimeDebitResult?.total || '0');
 
-      // 11. All Time Credits - sum of all credit transactions (deposits, cash outs, transfers in, unlocks)
-      const allTimeCreditsResult = await transactionRepository
-        .createQueryBuilder('transaction')
-        .select('SUM(transaction.amount)', 'total')
-        .where('transaction.type IN (:...types)', {
-          types: [TransactionType.DEPOSIT, TransactionType.CASH_OUT, TransactionType.UNLOCK_FUNDS]
-        })
-        .andWhere('transaction.status = :status', { status: TransactionStatus.COMPLETED })
-        .getRawOne();
-
-      const allTimeCredits = parseFloat(allTimeCreditsResult?.total || '0');
+      // 11. All Time Credits - same as total deposits (real finance only)
+      const allTimeCredits = totalDeposit;
 
       // 12. Available Balance - calculate as credits minus debits
       const availableBalance = allTimeCredits - allTimeDebit;
