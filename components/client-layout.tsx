@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from "react";
-import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import LenisScroll from "@/components/lenis";
 import { usePathname } from "next/navigation";
 import BottomNav from "@/components/bottom-nav";
@@ -19,23 +17,27 @@ export default function ClientLayout({ children }: ClientLayoutProps) {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const pathname = usePathname();
 
+    const isAdminPage = pathname.startsWith('/admin');
+    // Show bottom-nav for main pages (fly page needs it for navigation)
+    const showBottomNav = pathname === '/' || pathname === '/transactions' || pathname === '/support' || pathname === '/fly';
+
     return (
         <>
             <PWARegister />
-            {pathname !== '/' && pathname !== '/transactions' && pathname !== '/support' && pathname !== '/fly' && <Navbar />}
             <LenisScroll />
             {children}
-            <BottomNav
-                isLoggedIn={isAuthenticated}
-                onOpenLogin={() => setShowLoginModal(true)}
-                onLogin={() => {}} // Handled by Descope session
-            />
+            {showBottomNav && !isAdminPage && (
+                <BottomNav
+                    isLoggedIn={isAuthenticated}
+                    onOpenLogin={() => setShowLoginModal(true)}
+                    onLogin={() => {}} // Handled by Descope session
+                />
+            )}
             <LoginModal
                 isOpen={showLoginModal}
                 onClose={() => setShowLoginModal(false)}
                 onLogin={() => setShowLoginModal(false)} // Handled by Descope session
             />
-            {pathname !== '/' && pathname !== '/transactions' && pathname !== '/support' && pathname !== '/fly' && <Footer />}
         </>
     );
 }
