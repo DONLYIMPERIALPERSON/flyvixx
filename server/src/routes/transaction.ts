@@ -5,6 +5,7 @@ import { Transaction, TransactionType, TransactionStatus } from '../models/Trans
 import { User } from '../models/User';
 import { validateDescopeToken } from '../middleware/descopeAuth';
 import { NotificationService } from '../utils/notificationService';
+import { cachedUserService } from '../services/cachedUserService';
 
 const router = express.Router();
 
@@ -144,6 +145,9 @@ router.post('/withdraw', validateDescopeToken, async (req, res) => {
     transaction.status = TransactionStatus.COMPLETED;
     await transactionRepository.save(transaction);
 
+    // Invalidate user cache after balance change
+    await cachedUserService.invalidateUserCache(userId);
+
     logger.info(`Withdrawal completed for user: ${userId}, transaction: ${transaction.id}`);
 
     res.json({
@@ -257,6 +261,12 @@ router.post('/transfer', validateDescopeToken, async (req, res) => {
       logger.info(`Transfer completed: ${senderId} -> ${recipient.id}, amount: $${amount}`);
     });
 
+    // Invalidate caches for both sender and recipient
+    await Promise.all([
+      cachedUserService.invalidateUserCache(senderId),
+      cachedUserService.invalidateUserCache(recipient.id)
+    ]);
+
     res.json({
       success: true,
       message: `Successfully transferred $${amount} to ${recipientEmail}`,
@@ -353,6 +363,15 @@ router.post('/lock-funds', validateDescopeToken, async (req, res) => {
     const lockedUntil = new Date();
     lockedUntil.setDate(lockedUntil.getDate() + 30);
 
+    // Ensure we get exactly 30 days by setting time to end of day
+    lockedUntil.setHours(23, 59, 59, 999);
+
+    // Check if this is the user's first time EVER locking funds (by checking transaction history)
+    const previousLockTransactions = await transactionRepository.count({
+      where: { userId, type: TransactionType.LOCK_FUNDS }
+    });
+    const isFirstTimeLocking = previousLockTransactions === 0;
+
     // Start transaction for atomicity
     await AppDataSource.transaction(async (transactionalEntityManager) => {
       // Update user balances and lock info
@@ -360,6 +379,14 @@ router.post('/lock-funds', validateDescopeToken, async (req, res) => {
       user.portfolioBalance = Number(user.portfolioBalance) + amount;
       user.lockedFunds = amount;
       user.lockedUntil = lockedUntil;
+
+      // Give daily gifts - users with locked funds should always have daily gifts available
+      const giftsToGive = user.level * 2; // Level 1 = 2 gifts, Level 2 = 4 gifts, etc.
+      user.dailyGifts = giftsToGive;
+      user.giftsLastReset = new Date(); // Reset to today
+
+      logger.info(`🎁 Lock funds for user ${userId}: giving ${giftsToGive} daily gifts (level ${user.level})`);
+
       await transactionalEntityManager.save(user);
 
       // Create transaction record
@@ -373,7 +400,8 @@ router.post('/lock-funds', validateDescopeToken, async (req, res) => {
       transaction.description = `Locked funds in portfolio for 30 days`;
       transaction.metadata = {
         lockedUntil: lockedUntil.toISOString(),
-        lockPeriodDays: 30
+        lockPeriodDays: 30,
+        ...(isFirstTimeLocking && { initialGiftsGiven: user.dailyGifts })
       };
       await transactionalEntityManager.save(transaction);
 
@@ -386,8 +414,11 @@ router.post('/lock-funds', validateDescopeToken, async (req, res) => {
         // Don't fail the lock funds operation if notification creation fails
       }
 
-      logger.info(`Funds locked for user: ${userId}, amount: $${amount}, locked until: ${lockedUntil.toISOString()}`);
+      logger.info(`Funds locked for user: ${userId}, amount: $${amount}, locked until: ${lockedUntil.toISOString()}${isFirstTimeLocking ? `, initial gifts: ${user.dailyGifts}` : ''}`);
     });
+
+    // Invalidate user cache after balance change
+    await cachedUserService.invalidateUserCache(userId);
 
     res.json({
       success: true,
@@ -492,7 +523,7 @@ router.get('/portfolio', validateDescopeToken, async (req, res) => {
 
     // Recalculate lock status after potential auto-unlock
     const isLocked = user.lockedFunds > 0 && user.lockedUntil && user.lockedUntil > now;
-    const daysLeft = user.lockedUntil ? Math.ceil((user.lockedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+    const daysLeft = user.lockedUntil ? Math.max(1, Math.ceil((user.lockedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
     const response: any = {
       success: true,

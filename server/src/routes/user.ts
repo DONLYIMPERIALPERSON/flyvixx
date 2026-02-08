@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { AppDataSource } from '../config/database';
 import { User } from '../models/User';
 import { validateDescopeToken } from '../middleware/descopeAuth';
+import { cachedUserService } from '../services/cachedUserService';
 
 const router = express.Router();
 
@@ -82,15 +83,22 @@ router.get('/profile', validateDescopeToken, async (req, res) => {
 
     logger.info('Profile request for user:', userId);
 
+    // Get cached user profile
+    const cachedProfile = await cachedUserService.getUserProfile(userId);
+    if (!cachedProfile) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Get additional user data that's not cached
     const userRepository = AppDataSource.getRepository(User);
     const user = await userRepository.findOne({
       where: { id: userId },
       select: [
-        'id',
-        'email',
         'payoutDetails',
-        'cashBalance',
-        'portfolioBalance',
+        'lockedUntil',
+        'dailyGifts',
+        'totalFlies',
+        'totalPortfolioProfit',
         'role',
         'status',
         'createdAt',
@@ -105,13 +113,19 @@ router.get('/profile', validateDescopeToken, async (req, res) => {
     res.json({
       success: true,
       user: {
-        id: user.id,
-        email: user.email,
+        id: cachedProfile.id,
+        email: cachedProfile.email,
         payoutDetails: user.payoutDetails,
         balance: {
-          cash: Number(user.cashBalance),
-          portfolio: Number(user.portfolioBalance)
+          cash: cachedProfile.cashBalance,
+          portfolio: cachedProfile.portfolioBalance
         },
+        lockedFunds: cachedProfile.lockedFunds,
+        lockedUntil: user.lockedUntil,
+        level: cachedProfile.level,
+        dailyGifts: user.dailyGifts,
+        totalFlies: user.totalFlies,
+        totalPortfolioProfit: Number(user.totalPortfolioProfit),
         role: user.role,
         status: user.status,
         createdAt: user.createdAt,
@@ -200,21 +214,14 @@ router.get('/balance', validateDescopeToken, async (req, res) => {
 
     logger.info('Balance request for user:', userId);
 
-    const userRepository = AppDataSource.getRepository(User);
-    const user = await userRepository.findOne({
-      where: { id: userId },
-      select: ['cashBalance', 'portfolioBalance']
-    });
-
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
-    }
+    // Get cached user balance
+    const balance = await cachedUserService.getUserBalance(userId);
 
     res.json({
       success: true,
       balance: {
-        cash: Number(user.cashBalance),
-        portfolio: Number(user.portfolioBalance)
+        cash: balance.cashBalance,
+        portfolio: balance.portfolioBalance
       }
     });
   } catch (error) {

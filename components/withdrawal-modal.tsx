@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, AlertTriangle, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useSession } from "@descope/react-sdk";
+import { useToast } from "./toast-notification";
 
 interface WithdrawalModalProps {
     isOpen: boolean;
@@ -38,6 +39,7 @@ const withdrawalMethodsConfig = {
 
 export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProps) {
     const { sessionToken } = useSession();
+    const { showSuccess, showError, showWarning, showInfo, ToastManager } = useToast();
     const [activeTab, setActiveTab] = useState<'btc' | 'usdt' | 'bank'>('bank');
     const [withdrawalAmount, setWithdrawalAmount] = useState('');
     const [otpCode, setOtpCode] = useState('');
@@ -111,11 +113,11 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
     const handleWithdraw = () => {
         const amount = parseFloat(withdrawalAmount);
         if (!amount || amount < currentMethod.minAmount) {
-            alert(`Minimum withdrawal amount is $${currentMethod.minAmount}`);
+            showError(`Minimum withdrawal amount is $${currentMethod.minAmount}`);
             return;
         }
         if (!currentMethod.isSet) {
-            alert('Please set up this withdrawal method first');
+            showError('Please set up this withdrawal method first');
             return;
         }
         // Send OTP first, then show verification screen
@@ -141,11 +143,11 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
             if (data.success) {
                 setShowOtpVerification(true);
             } else {
-                alert(data.error || 'Failed to send OTP');
+                showError(data.error || 'Failed to send OTP');
             }
         } catch (error) {
             console.error('OTP send error:', error);
-            alert('Failed to send OTP. Please try again.');
+            showError('Failed to send OTP. Please try again.');
         } finally {
             setIsSendingOtp(false);
         }
@@ -186,11 +188,11 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
 
             if (data.success) {
                 console.log('✅ Withdrawal successful!');
-                alert(`Withdrawal of $${withdrawalAmount} via ${currentMethod.label} initiated successfully!`);
+                showSuccess(`Withdrawal of $${withdrawalAmount} via ${currentMethod.label} initiated successfully!`);
                 return true;
             } else {
                 console.error('❌ Withdrawal failed with error:', data.error);
-                alert(data.error || 'Withdrawal failed');
+                showError(data.error || 'Withdrawal failed');
                 return false;
             }
         } catch (error) {
@@ -199,7 +201,7 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
                 message: error instanceof Error ? error.message : 'Unknown error',
                 stack: error instanceof Error ? error.stack : undefined
             });
-            alert('Failed to process withdrawal. Please try again.');
+            showError('Failed to process withdrawal. Please try again.');
             return false;
         }
     };
@@ -231,11 +233,11 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
                     onClose();
                 }
             } else {
-                alert(data.error || 'Invalid OTP code');
+                showError(data.error || 'Invalid OTP code');
             }
         } catch (error) {
             console.error('OTP verification error:', error);
-            alert('Failed to verify OTP. Please try again.');
+            showError('Failed to verify OTP. Please try again.');
         } finally {
             setIsVerifyingOtp(false);
         }
@@ -249,7 +251,9 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+        <>
+            <ToastManager />
+            <div className="fixed inset-0 z-50 flex items-end justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
             <div className={`bg-white rounded-t-xl w-full max-w-md h-[80vh] transform transition-transform duration-300 flex flex-col relative ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}>
                 {/* Header */}
@@ -370,7 +374,7 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
                                 <button
                                     onClick={() => {
                                         // Could navigate to profile/payout details, but for now just show message
-                                        alert('Please go to Profile > Payout Details to add your withdrawal methods.');
+                                        showInfo('Please go to Profile > Payout Details to add your withdrawal methods.');
                                     }}
                                     className="bg-[#004B49] text-white py-2 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors"
                                 >
@@ -471,5 +475,6 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
                 </div>
             </div>
         </div>
-    );
+    </>
+);
 }
