@@ -65,7 +65,7 @@ export const metadata: Metadata = {
         },
     },
     verification: {
-        google: 'your-google-site-verification-code', // Replace with actual verification code
+        google: 'odHXpgLcszLDBY-jXXXvGwzS_oiQ29bVuk-2Bh4LNVg',
     },
     category: 'gaming',
     classification: 'Online Gaming Platform',
