@@ -1,0 +1,14 @@
+User-agent: *
+Disallow: /
+
+# Only allow crawling of the home page
+Allow: /$
+
+# Block all other pages
+Disallow: /admin/
+Disallow: /fly/
+Disallow: /support/
+Disallow: /transactions/
+
+# Sitemap
+Sitemap: https://flyvixx.com/sitemap.xml

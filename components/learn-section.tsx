@@ -51,14 +51,42 @@ export default function LearnSection() {
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto">
-                            <div className="space-y-4">
-                                {features.map((feature, index) => (
-                                    <div key={index} className="border-b border-gray-200 pb-4">
-                                        <h4 className="font-semibold text-[#004B49] mb-2">{feature.title}</h4>
-                                        <p className="text-sm text-gray-600">{feature.description}</p>
-                                    </div>
-                                ))}
+                        <div className="space-y-4">
+                            <div className="border-b border-gray-200 pb-4">
+                                <h4 className="font-semibold text-[#004B49] mb-2">How Flight Power Works</h4>
+                                <p className="text-sm text-gray-600">
+                                    Lock funds in your portfolio for 30 days to receive daily "flight power" (1% of your locked amount). This gives you risk-free access to play the Aviator game without touching your principal investment.
+                                </p>
                             </div>
+
+                            <div className="border-b border-gray-200 pb-4">
+                                <h4 className="font-semibold text-[#004B49] mb-2">Daily Gift System</h4>
+                                <p className="text-sm text-gray-600">
+                                    Each day you receive "gifts" based on your level (Level 1 = 2 gifts, Level 2 = 4 gifts, etc.). Each gift allows you to place one portfolio bet using your flight power. Gifts reset daily and are consumed when you play.
+                                </p>
+                            </div>
+
+                            <div className="border-b border-gray-200 pb-4">
+                                <h4 className="font-semibold text-[#004B49] mb-2">Safe Play Protection</h4>
+                                <p className="text-sm text-gray-600">
+                                    Portfolio bets can be set to "Safe Play" mode, which automatically cashes out at 1.0x multiplier. This guarantees you get your flight power back plus any gains, with zero risk of loss.
+                                </p>
+                            </div>
+
+                            <div className="border-b border-gray-200 pb-4">
+                                <h4 className="font-semibold text-[#004B49] mb-2">Level Progression</h4>
+                                <p className="text-sm text-gray-600">
+                                    Build your referral network to increase your level. Higher levels unlock more daily gifts (more betting opportunities) and enhanced features. Your level determines your earning potential.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 className="font-semibold text-[#004B49] mb-2">Capital Preservation</h4>
+                                <p className="text-sm text-gray-600">
+                                    Your locked funds have NO RISK at all. The 1% daily flight power is a reward given to you, not deducted from your locked funds. After 30 days, you get 100% of your principal back, plus all your winnings.
+                                </p>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>

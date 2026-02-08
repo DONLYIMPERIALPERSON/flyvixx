@@ -15,9 +15,60 @@ const urbanist = Urbanist({
 });
 
 export const metadata: Metadata = {
-    title: "FLYVIXX - Aviator Game",
-    description: "Play the exciting Aviator game with real-time multiplayer action. Experience casino-style gaming with synchronized gameplay across all devices.",
-    keywords: "aviator game, casino game, online gambling, multiplayer game, pwa game",
+    title: "FLYVIXX - Strategic Gaming Platform | Lock Funds, Earn Daily Rewards",
+    description: "Experience strategic gaming with FLYVIXX. Lock your funds for 30 days to earn daily flight power and play the Aviator game risk-free. Build your portfolio, level up, and maximize your earnings with our innovative gaming ecosystem.",
+    keywords: "FLYVIXX, aviator game, strategic gaming, portfolio gaming, daily rewards, lock funds earn, risk-free gaming, multiplayer casino, online gaming platform, investment gaming",
+    authors: [{ name: "FLYVIXX Team" }],
+    creator: "FLYVIXX",
+    publisher: "FLYVIXX",
+    formatDetection: {
+        telephone: false,
+    },
+    metadataBase: new URL('https://flyvixx.com'),
+    alternates: {
+        canonical: '/',
+    },
+    openGraph: {
+        title: "FLYVIXX - Strategic Gaming Platform | Lock Funds, Earn Daily Rewards",
+        description: "Lock funds for 30 days, earn daily flight power, and play Aviator game risk-free. Build your portfolio and maximize earnings with FLYVIXX's innovative gaming ecosystem.",
+        url: 'https://flyvixx.com',
+        siteName: 'FLYVIXX',
+        images: [
+            {
+                url: '/hero-section-image.png',
+                width: 1200,
+                height: 630,
+                alt: 'FLYVIXX Gaming Platform',
+            },
+        ],
+        locale: 'en_US',
+        type: 'website',
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: "FLYVIXX - Strategic Gaming Platform",
+        description: "Lock funds for 30 days, earn daily flight power, and play Aviator game risk-free.",
+        images: ['/hero-section-image.png'],
+        creator: '@flyvixx',
+    },
+    robots: {
+        index: false, // Only index home page
+        follow: false,
+        nocache: false,
+        googleBot: {
+            index: false,
+            follow: false,
+            noimageindex: true,
+            'max-video-preview': -1,
+            'max-image-preview': 'none',
+            'max-snippet': -1,
+        },
+    },
+    verification: {
+        google: 'your-google-site-verification-code', // Replace with actual verification code
+    },
+    category: 'gaming',
+    classification: 'Online Gaming Platform',
     viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
     themeColor: "#ffd700",
     manifest: "/manifest.json",
@@ -31,9 +82,6 @@ export const metadata: Metadata = {
                 media: "(device-width: 768px) and (device-height: 1024px)",
             },
         ],
-    },
-    formatDetection: {
-        telephone: false,
     },
     other: {
         "mobile-web-app-capable": "yes",
@@ -51,8 +99,43 @@ export default function RootLayout({
 }: Readonly<{
     children: React.ReactNode;
 }>) {
+    const structuredData = {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "FLYVIXX",
+        "description": "Strategic gaming platform where users lock funds for 30 days to earn daily flight power and play the Aviator game risk-free",
+        "url": "https://flyvixx.com",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "creator": {
+            "@type": "Organization",
+            "name": "FLYVIXX Team"
+        },
+        "featureList": [
+            "Portfolio-based gaming",
+            "Daily flight power rewards",
+            "Risk-free Aviator gameplay",
+            "Referral network system",
+            "Real-time multiplayer gaming"
+        ],
+        "screenshot": "https://flyvixx.com/hero-section-image.png"
+    };
+
     return (
         <html lang="en">
+            <head>
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{
+                        __html: JSON.stringify(structuredData),
+                    }}
+                />
+            </head>
             <body>
                 <Providers>
                     <ClientLayout>{children}</ClientLayout>

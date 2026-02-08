@@ -13635,3 +13635,20 @@
 {"level":"info","message":"✅ Final balance for user U39NSVZMLt0A7W0DuYP7baA4N9Xz: cash=947.521983.77, portfolio=50.00-10","timestamp":"2026-02-08T20:03:01.727Z"}
 {"level":"info","message":"📊 Portfolio transactions total: -10","timestamp":"2026-02-08T20:03:01.730Z"}
 {"level":"info","message":"✅ Final balance for user U39NSVZMLt0A7W0DuYP7baA4N9Xz: cash=947.521983.77, portfolio=50.00-10","timestamp":"2026-02-08T20:03:01.730Z"}
+{"level":"info","message":"🔄 Connecting to PostgreSQL database...","timestamp":"2026-02-08T22:19:27.214Z"}
+{"level":"info","message":"✅ Database connected successfully","timestamp":"2026-02-08T22:19:39.832Z"}
+{"level":"info","message":"🚀 Flyvixx Server running on port 3001","timestamp":"2026-02-08T22:19:39.834Z"}
+{"level":"info","message":"🌐 Environment: development","timestamp":"2026-02-08T22:19:39.834Z"}
+{"level":"info","message":"🔗 Frontend URL: http://localhost:3000","timestamp":"2026-02-08T22:19:39.834Z"}
+{"level":"info","message":"Admin OTP request for email: emperor@flyvixx.com","timestamp":"2026-02-08T22:20:01.411Z"}
+{"level":"info","message":"Admin OTP sent successfully to: emperor@flyvixx.com","timestamp":"2026-02-08T22:20:05.038Z"}
+{"level":"info","message":"Admin OTP verification attempt for: emperor@flyvixx.com","timestamp":"2026-02-08T22:20:23.945Z"}
+{"level":"info","message":"Generating JWT token for admin: emperor@flyvixx.com with secret length: 49","timestamp":"2026-02-08T22:20:27.737Z"}
+{"level":"info","message":"JWT token generated successfully for admin: emperor@flyvixx.com","timestamp":"2026-02-08T22:20:27.738Z"}
+{"level":"info","message":"Admin OTP verified successfully for: emperor@flyvixx.com","timestamp":"2026-02-08T22:20:27.738Z"}
+{"level":"info","message":"Admin authenticated: emperor@flyvixx.com (admin_1770564400.553247_eb133e722)","timestamp":"2026-02-08T22:20:29.543Z"}
+{"level":"info","message":"Admin dashboard metrics request","timestamp":"2026-02-08T22:20:29.544Z"}
+{"level":"info","message":"Dashboard metrics calculated successfully","timestamp":"2026-02-08T22:20:32.856Z"}
+{"level":"info","message":"Admin authenticated: emperor@flyvixx.com (admin_1770564400.553247_eb133e722)","timestamp":"2026-02-08T22:20:34.419Z"}
+{"level":"info","message":"Admin dashboard metrics request","timestamp":"2026-02-08T22:20:34.419Z"}
+{"level":"info","message":"Dashboard metrics calculated successfully","timestamp":"2026-02-08T22:20:37.826Z"}
