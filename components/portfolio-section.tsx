@@ -26,6 +26,7 @@ export default function PortfolioSection({ isLoggedIn }: PortfolioSectionProps) 
     const [showPortfolioModal, setShowPortfolioModal] = useState(false);
     const [showLockFundsModal, setShowLockFundsModal] = useState(false);
     const [portfolioInfo, setPortfolioInfo] = useState<PortfolioInfo | null>(null);
+    const [userData, setUserData] = useState<{ totalFlies?: number; totalPortfolioProfit?: number } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // Fetch portfolio information when logged in
@@ -45,7 +46,8 @@ export default function PortfolioSection({ isLoggedIn }: PortfolioSectionProps) 
                 return;
             }
 
-            const response = await fetch(`${apiBaseUrl}/api/transactions/portfolio`, {
+            // Fetch portfolio info
+            const portfolioResponse = await fetch(`${apiBaseUrl}/api/transactions/portfolio`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
@@ -54,10 +56,30 @@ export default function PortfolioSection({ isLoggedIn }: PortfolioSectionProps) 
                 credentials: 'include'
             });
 
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    setPortfolioInfo(data.portfolio);
+            if (portfolioResponse.ok) {
+                const portfolioData = await portfolioResponse.json();
+                if (portfolioData.success) {
+                    setPortfolioInfo(portfolioData.portfolio);
+                }
+            }
+
+            // Fetch user profile for portfolio stats
+            const userResponse = await fetch(`${apiBaseUrl}/api/user/profile`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                credentials: 'include'
+            });
+
+            if (userResponse.ok) {
+                const userData = await userResponse.json();
+                if (userData.success && userData.user) {
+                    setUserData({
+                        totalFlies: userData.user.totalFlies || 0,
+                        totalPortfolioProfit: Number(userData.user.totalPortfolioProfit || 0)
+                    });
                 }
             }
         } catch (error) {
@@ -97,7 +119,7 @@ export default function PortfolioSection({ isLoggedIn }: PortfolioSectionProps) 
                             </div>
                             <div className="flex items-center space-x-2 text-xs text-gray-500">
                                 <Lock size={12} />
-                                <span>{portfolioInfo.daysLeft} days left</span>
+                                <span>{Math.min(portfolioInfo.daysLeft, 30)} days left</span>
                             </div>
                         </div>
                     </div>
@@ -133,6 +155,8 @@ export default function PortfolioSection({ isLoggedIn }: PortfolioSectionProps) 
                 isOpen={showPortfolioModal}
                 onClose={() => setShowPortfolioModal(false)}
                 portfolioInfo={portfolioInfo}
+                userData={userData}
+                onDataRefresh={fetchPortfolioInfo}
             />
 
             <LockFundsModal

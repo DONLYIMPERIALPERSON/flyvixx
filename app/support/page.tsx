@@ -4,72 +4,16 @@ import { useRouter } from "next/navigation";
 import { MessageCircle, Mail, Send } from "lucide-react";
 import TransactionHeader from "../../components/transaction-header";
 import LoginGuard from "../../components/login-guard";
-import { useEffect } from "react";
-
-// HubSpot type declarations
-declare global {
-    interface Window {
-        HubSpotConversations?: {
-            widget: {
-                load: () => void;
-                open: () => void;
-                remove: () => void;
-            };
-        };
-    }
-}
 
 export default function SupportPage() {
     const router = useRouter();
 
-    useEffect(() => {
-        // Load HubSpot live chat script only on support page
-        const script = document.createElement('script');
-        script.type = 'text/javascript';
-        script.id = 'hs-script-loader';
-        script.async = true;
-        script.defer = true;
-        script.src = '//js-eu1.hs-scripts.com/147732252.js';
-        document.body.appendChild(script);
-
-        // Function to show HubSpot chat
-        const showChat = () => {
-            if (window.HubSpotConversations) {
-                window.HubSpotConversations.widget.load();
-                window.HubSpotConversations.widget.open();
-            }
-        };
-
-        // Function to hide HubSpot chat
-        const hideChat = () => {
-            if (window.HubSpotConversations) {
-                window.HubSpotConversations.widget.remove();
-            }
-        };
-
-        // Show chat when script loads
-        script.onload = () => {
-            // Wait a bit for HubSpot to initialize
-            setTimeout(showChat, 1000);
-        };
-
-        // Show chat immediately if already loaded
-        if (window.HubSpotConversations) {
-            showChat();
-        }
-
-        // Cleanup function to hide chat when component unmounts
-        return () => {
-            hideChat();
-            const existingScript = document.getElementById('hs-script-loader');
-            if (existingScript) {
-                document.body.removeChild(existingScript);
-            }
-        };
-    }, []);
-
     const handleBack = () => {
         router.push('/');
+    };
+
+    const handleTelegramChat = () => {
+        window.open('https://t.me/flyvixx_support', '_blank');
     };
 
     const handleTelegramJoin = () => {
@@ -97,11 +41,19 @@ export default function SupportPage() {
                         {/* Support Text */}
                         <h2 className="text-white text-xl font-bold mb-4">Customer Support</h2>
                         <p className="text-white/80 text-sm leading-relaxed mb-8">
-                            Hit the live chat icon to chat with a customer care representative or send us an email
+                            Chat with our customer care representative on Telegram or send us an email
                         </p>
 
                         {/* Support Buttons */}
                         <div className="space-y-4">
+                            <button
+                                onClick={handleTelegramChat}
+                                className="w-full bg-[#0088cc] text-white py-4 px-6 rounded-lg font-medium hover:bg-[#0077b3] transition-colors flex items-center justify-center space-x-3"
+                            >
+                                <Send size={20} />
+                                <span>Chat on Telegram</span>
+                            </button>
+
                             <button
                                 onClick={handleTelegramJoin}
                                 className="w-full bg-[#0088cc] text-white py-4 px-6 rounded-lg font-medium hover:bg-[#0077b3] transition-colors flex items-center justify-center space-x-3"

@@ -6,9 +6,10 @@ import Image from "next/image";
 interface FlyHeaderProps {
     onBack?: () => void;
     onHistory?: () => void;
+    flightCount?: number;
 }
 
-export default function FlyHeader({ onBack, onHistory }: FlyHeaderProps) {
+export default function FlyHeader({ onBack, onHistory, flightCount = 0 }: FlyHeaderProps) {
     const handleBack = () => {
         if (onBack) {
             onBack();
@@ -45,12 +46,19 @@ export default function FlyHeader({ onBack, onHistory }: FlyHeaderProps) {
                 />
             </div>
 
-            {/* History Button */}
-            <div
-                className="w-12 h-12 bg-white/20 backdrop-blur-lg border border-white/30 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
-                onClick={handleHistory}
-            >
-                <History size={20} color="#ffd700" />
+            {/* History Button with Flight Count */}
+            <div className="relative">
+                <div
+                    className="w-12 h-12 bg-white/20 backdrop-blur-lg border border-white/30 rounded-full flex items-center justify-center cursor-pointer hover:bg-white/30 transition-colors"
+                    onClick={handleHistory}
+                >
+                    <History size={20} color="#ffd700" />
+                </div>
+                {flightCount > 0 && (
+                    <div className="absolute -top-1 -right-1 bg-[#FFD700] text-[#004B49] text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">
+                        {flightCount > 99 ? '99+' : flightCount}
+                    </div>
+                )}
             </div>
         </header>
     );

@@ -19,12 +19,18 @@ interface PortfolioModalProps {
     isOpen: boolean;
     onClose: () => void;
     portfolioInfo?: PortfolioInfo | null;
+    userData?: {
+        totalFlies?: number;
+        totalPortfolioProfit?: number;
+    } | null;
+    onDataRefresh?: () => void;
 }
 
-export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo }: PortfolioModalProps) {
+export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, userData: initialUserData, onDataRefresh }: PortfolioModalProps) {
     const { sessionToken } = useSession();
     const [shareMessage, setShareMessage] = useState('');
     const [portfolioInfo, setPortfolioInfo] = useState<PortfolioInfo | null>(initialPortfolioInfo || null);
+    const [userData, setUserData] = useState(initialUserData || null);
     const [isLoading, setIsLoading] = useState(false);
 
     // Fetch fresh portfolio data when modal opens
@@ -39,7 +45,10 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
         if (initialPortfolioInfo) {
             setPortfolioInfo(initialPortfolioInfo);
         }
-    }, [initialPortfolioInfo]);
+        if (initialUserData) {
+            setUserData(initialUserData);
+        }
+    }, [initialPortfolioInfo, initialUserData]);
 
     const fetchPortfolioInfo = async () => {
         try {
@@ -52,17 +61,29 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
             }
 
             console.log('Fetching portfolio info...');
-            const response = await fetch(`${apiBaseUrl}/api/transactions/portfolio`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionToken}`
-                },
-                credentials: 'include'
-            });
 
-            if (response.ok) {
-                const data = await response.json();
+            // Fetch both portfolio info and user profile data
+            const [portfolioResponse, userResponse] = await Promise.all([
+                fetch(`${apiBaseUrl}/api/transactions/portfolio`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    },
+                    credentials: 'include'
+                }),
+                fetch(`${apiBaseUrl}/api/user/profile`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${sessionToken}`
+                    },
+                    credentials: 'include'
+                })
+            ]);
+
+            if (portfolioResponse.ok) {
+                const data = await portfolioResponse.json();
                 console.log('Portfolio API response:', data);
                 if (data.success) {
                     console.log('Setting portfolio info:', data.portfolio);
@@ -71,7 +92,27 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
                     console.log('API returned success=false');
                 }
             } else {
-                console.log('API response not ok:', response.status);
+                console.log('Portfolio API response not ok:', portfolioResponse.status);
+            }
+
+            if (userResponse.ok) {
+                const userDataResponse = await userResponse.json();
+                if (userDataResponse.success && userDataResponse.user) {
+                    // Update local userData state with fresh data
+                    setUserData({
+                        totalFlies: userDataResponse.user.totalFlies || 0,
+                        totalPortfolioProfit: Number(userDataResponse.user.totalPortfolioProfit || 0)
+                    });
+
+                    // Call the parent refresh callback to update the data
+                    if (onDataRefresh) {
+                        onDataRefresh();
+                    }
+                    console.log('User data updated locally and parent refreshed:', {
+                        totalFlies: userDataResponse.user.totalFlies,
+                        totalPortfolioProfit: userDataResponse.user.totalPortfolioProfit
+                    });
+                }
             }
         } catch (error) {
             console.error('Failed to fetch portfolio info in modal:', error);
@@ -83,18 +124,26 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
     // Use real data or defaults
     const daysLeft = portfolioInfo?.daysLeft || 0;
     const totalDays = 30;
-    const profitMade = 245.67; // This would come from actual profit calculations
-    const todaysFlights = 8; // This would come from actual flight data
+    const profitMade = userData?.totalPortfolioProfit || 0; // Real portfolio profit
+    const todaysFlights = userData?.totalFlies || 0; // Real total flies
     const aircraftName = `Aircraft-${Date.now().toString().slice(-10)}`;
     const currentLevel = portfolioInfo?.level || 1;
     const lockedAmount = portfolioInfo?.lockedFunds || 0;
+
+    // Calculate days passed correctly (cap daysLeft to max 30 for display)
+    const effectiveDaysLeft = Math.min(daysLeft, totalDays);
+    const daysPassed = totalDays - effectiveDaysLeft;
+    const progressPercentage = (daysPassed / totalDays) * 100;
 
     // Debug logging
     console.log('PortfolioModal render:', {
         portfolioInfo,
         hasLockedFunds: portfolioInfo?.hasLockedFunds,
         daysLeft,
-        calculation: portfolioInfo?.hasLockedFunds ? `${Math.min(30, 31 - daysLeft)}/${totalDays}` : '0/30'
+        effectiveDaysLeft,
+        daysPassed,
+        progressPercentage,
+        display: portfolioInfo?.hasLockedFunds ? `${daysPassed}/${totalDays}` : '0/30'
     });
 
 
@@ -165,7 +214,7 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
                                     Lock Period
                                 </span>
                                 <span className="text-lg font-bold text-[#FFD700]">
-                                    {portfolioInfo?.hasLockedFunds ? `${30 - daysLeft}/${totalDays}` : '0/30'}
+                                    {portfolioInfo?.hasLockedFunds ? `${daysPassed}/${totalDays}` : '0/30'}
                                 </span>
                             </div>
                             {/* Progress Bar */}
@@ -174,14 +223,14 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
                                     <div className="w-full bg-white/20 rounded-full h-2">
                                         <div
                                             className="bg-[#FFD700] h-2 rounded-full transition-all duration-300"
-                                            style={{ width: `${((30 - daysLeft) / 30) * 100}%` }}
+                                            style={{ width: `${progressPercentage}%` }}
                                         ></div>
                                     </div>
                                 </div>
                             )}
                             <div className="text-center">
                                 <p className="text-xs opacity-70">
-                                    {daysLeft > 0 ? `${daysLeft} days remaining` : 'Lock period completed'}
+                                    {effectiveDaysLeft > 0 ? `${effectiveDaysLeft} days remaining` : 'Lock period completed'}
                                 </p>
                             </div>
                         </div>
@@ -200,7 +249,7 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
                                     <Plane size={16} className="text-[#FFD700]" />
                                 </div>
                                 <p className="text-2xl font-bold text-[#FFD700]">{todaysFlights}</p>
-                                <p className="text-xs opacity-80">Today's Flights</p>
+                                <p className="text-xs opacity-80">Total Flights</p>
                             </div>
                         </div>
 

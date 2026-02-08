@@ -7,6 +7,7 @@
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc && cp -r src/templates dist/",
     "start": "node dist/index.js",
+    "add-admin": "ts-node scripts/add-admin.ts",
     "lint": "eslint src/**/*.ts",
     "test": "jest"
   },
@@ -20,6 +21,7 @@
   "license": "MIT",
   "dependencies": {
     "@descope/node-sdk": "^1.9.1",
+    "@types/ioredis": "^4.28.10",
     "bcryptjs": "^2.4.3",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -27,6 +29,7 @@
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
+    "ioredis": "^5.9.2",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
     "reflect-metadata": "^0.1.13",

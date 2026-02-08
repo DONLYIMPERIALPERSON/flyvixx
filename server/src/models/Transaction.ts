@@ -8,7 +8,8 @@ export enum TransactionType {
   CASH_OUT = 'cash_out',
   TRANSFER = 'transfer',
   LOCK_FUNDS = 'lock_funds',
-  UNLOCK_FUNDS = 'unlock_funds'
+  UNLOCK_FUNDS = 'unlock_funds',
+  ADMIN_CASHOUT = 'admin_cashout'
 }
 
 export enum TransactionStatus {

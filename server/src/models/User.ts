@@ -79,6 +79,21 @@ export class User {
   @Column({ nullable: true })
   referredBy?: string;
 
+  @Column({ type: 'int', default: 1 })
+  level!: number;
+
+  @Column({ type: 'int', default: 0 })
+  dailyGifts!: number;
+
+  @Column({ type: 'date', nullable: true })
+  giftsLastReset?: Date;
+
+  @Column({ type: 'int', default: 0 })
+  totalFlies!: number;
+
+  @Column({ type: 'decimal', precision: 15, scale: 2, default: 0 })
+  totalPortfolioProfit!: number;
+
   @CreateDateColumn()
   createdAt!: Date;
 

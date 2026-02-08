@@ -1,3 +1,4 @@
+import 'reflect-metadata'; // Required for TypeORM decorators
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
@@ -14,6 +15,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { rateLimiter } from './middleware/rateLimiter';
 import { setupSocketHandlers } from './sockets/gameSocket';
 import { connectDatabase } from './config/database';
+import './config/redis'; // Initialize Redis connection
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -24,6 +26,7 @@ import otpRoutes from './routes/otp';
 import safeHavenRoutes from './routes/safehaven';
 import referralRoutes from './routes/referral';
 import notificationRoutes from './routes/notification';
+import adminAuthRoutes from './routes/adminAuth';
 
 const app = express();
 
@@ -79,6 +82,7 @@ app.use('/api/otp', otpRoutes);
 app.use('/api/safehaven', safeHavenRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/admin', adminAuthRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

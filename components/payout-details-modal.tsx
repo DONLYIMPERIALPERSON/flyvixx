@@ -5,6 +5,7 @@ import { X, Edit2, Save, CreditCard, CheckCircle, AlertCircle, Loader2 } from "l
 import { useSession } from "@descope/react-sdk";
 import { useAuth } from "./login-modal";
 import { sortedBanks, Bank } from "../data/banks";
+import { useToast } from "./toast-notification";
 
 interface PayoutDetailsModalProps {
     isOpen: boolean;
@@ -45,6 +46,7 @@ const emptyPayoutMethods: PayoutMethod[] = [
 export default function PayoutDetailsModal({ isOpen, onClose }: PayoutDetailsModalProps) {
     const { sessionToken } = useSession();
     const { isAuthenticated } = useAuth();
+    const { showSuccess, showError, showWarning, showInfo, ToastManager } = useToast();
     const [activeTab, setActiveTab] = useState<'btc' | 'usdt' | 'bank'>('bank');
     const [isEditing, setIsEditing] = useState(false);
     const [showOtpVerification, setShowOtpVerification] = useState(false);
@@ -253,9 +255,9 @@ export default function PayoutDetailsModal({ isOpen, onClose }: PayoutDetailsMod
         // Save to backend with the new data
         const success = await savePayoutDetails(newPayoutMethods);
         if (success) {
-            alert(`${currentMethod.label} payout method removed successfully!`);
+            showSuccess(`${currentMethod.label} payout method removed successfully!`);
         } else {
-            alert('Failed to remove payout method. Please try again.');
+            showError('Failed to remove payout method. Please try again.');
             // Revert local changes
             loadPayoutDetails();
         }
@@ -280,11 +282,11 @@ export default function PayoutDetailsModal({ isOpen, onClose }: PayoutDetailsMod
             if (data.success) {
                 setShowOtpVerification(true);
             } else {
-                alert(data.error || 'Failed to send OTP');
+                showError(data.error || 'Failed to send OTP');
             }
         } catch (error) {
             console.error('OTP send error:', error);
-            alert('Failed to send OTP. Please try again.');
+            showError('Failed to send OTP. Please try again.');
         } finally {
             setIsSendingOtp(false);
         }
@@ -326,19 +328,19 @@ export default function PayoutDetailsModal({ isOpen, onClose }: PayoutDetailsMod
                         setOtpCode('');
                         // Reload payout details to reflect changes
                         loadPayoutDetails();
-                        alert('Payout details saved successfully!');
+                        showSuccess('Payout details saved successfully!');
                     } else {
-                        alert('Failed to save payout details. Please try again.');
+                        showError('Failed to save payout details. Please try again.');
                         // Revert local changes
                         loadPayoutDetails();
                     }
                 }
             } else {
-                alert(data.error || 'Invalid OTP code');
+                showError(data.error || 'Invalid OTP code');
             }
         } catch (error) {
             console.error('OTP verification error:', error);
-            alert('Failed to verify OTP. Please try again.');
+            showError('Failed to verify OTP. Please try again.');
         } finally {
             setIsVerifyingOtp(false);
         }
@@ -464,7 +466,8 @@ export default function PayoutDetailsModal({ isOpen, onClose }: PayoutDetailsMod
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+        <>
+            <div className="fixed inset-0 z-50 flex items-end justify-center">
             <div className="absolute inset-0 bg-black/50" onClick={onClose}></div>
             <div className={`bg-white rounded-t-xl w-full max-w-md h-[80vh] transform transition-transform duration-300 flex flex-col relative ${isOpen ? 'translate-y-0' : 'translate-y-full'}`}>
                 {/* Header */}
@@ -777,6 +780,8 @@ export default function PayoutDetailsModal({ isOpen, onClose }: PayoutDetailsMod
                 )}
             </div>
         </div>
+        <ToastManager />
+    </>
     );
 }
 

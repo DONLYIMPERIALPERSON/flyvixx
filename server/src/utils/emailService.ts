@@ -71,6 +71,38 @@ export class EmailService {
     }
 
     /**
+     * Send an OTP email to an admin
+     */
+    public async sendAdminOTPEmail(email: string, otpCode: string): Promise<boolean> {
+        try {
+            // Load email templates (use same OTP templates for now)
+            const htmlTemplate = fs.readFileSync(path.join(this.templatesDir, 'otp-email.html'), 'utf-8');
+            const textTemplate = fs.readFileSync(path.join(this.templatesDir, 'otp-email.txt'), 'utf-8');
+
+            // Replace placeholders
+            const htmlContent = htmlTemplate.replace(/{{OTP_CODE}}/g, otpCode);
+            const textContent = textTemplate.replace(/{{OTP_CODE}}/g, otpCode);
+
+            // Admin-specific subject
+            const subject = `Flyvixx Admin OTP Code - ${otpCode}`;
+
+            const result = await resend.emails.send({
+                from: 'Flyvixx Admin Security <admin-security@mail.flyvixx.com>',
+                to: [email],
+                subject: subject,
+                html: htmlContent,
+                text: textContent,
+            });
+
+            console.log('📧 Admin OTP email sent successfully:', result);
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to send admin OTP email:', error);
+            return false;
+        }
+    }
+
+    /**
      * Send a deposit notification email to a user
      */
     public async sendDepositEmail(email: string, amount: string): Promise<boolean> {

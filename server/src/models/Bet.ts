@@ -9,6 +9,11 @@ export enum BetStatus {
   LOST = 'lost'
 }
 
+export enum BetType {
+  CASH = 'cash',
+  PORTFOLIO = 'portfolio'
+}
+
 @Entity('bets')
 export class Bet {
   @PrimaryGeneratedColumn('uuid')
@@ -35,6 +40,13 @@ export class Bet {
     default: BetStatus.ACTIVE
   })
   status!: BetStatus;
+
+  @Column({
+    type: 'enum',
+    enum: BetType,
+    default: BetType.CASH
+  })
+  betType!: BetType;
 
   @Column({ type: 'timestamp', nullable: true })
   cashedOutAtTime?: Date;

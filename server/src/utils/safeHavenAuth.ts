@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { createSign } from 'crypto';
 
 // SafeHaven OAuth2 Configuration
-const SAFEHAVEN_BASE_URL = process.env.SAFEHAVEN_BASE_URL || 'https://api.safehavenmfb.com';
+const SAFEHAVEN_BASE_URL = process.env.SAFEHAVEN_BASE_URL || '';
 const SAFEHAVEN_CLIENT_ID = process.env.SAFEHAVEN_CLIENT_ID || '';
 // Use the audience from ENV or derive it from the Base URL
 const SAFEHAVEN_AUDIENCE = process.env.SAFEHAVEN_AUDIENCE || SAFEHAVEN_BASE_URL;
@@ -106,7 +106,9 @@ class SafeHavenAuth {
     }
 
     if (data && data.responseCode && data.responseCode !== '00') {
-      throw new Error(`SafeHaven Business Error: ${data.responseMessage || 'Unknown error'}`);
+      console.error('SafeHaven API business error details:', JSON.stringify(data, null, 2));
+      const errorMessage = data.responseMessage || data.message || data.error || 'Unknown error';
+      throw new Error(`SafeHaven Business Error (${data.responseCode}): ${errorMessage}`);
     }
 
     return data;

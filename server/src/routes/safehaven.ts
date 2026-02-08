@@ -8,6 +8,7 @@ import { Transaction, TransactionType, TransactionStatus } from '../models/Trans
 import { emailService } from '../utils/emailService';
 import { banks, getBankCodeByName } from '../utils/banks';
 import { NotificationService } from '../utils/notificationService';
+import { cachedUserService } from '../services/cachedUserService';
 
 const router = express.Router();
 
@@ -509,6 +510,9 @@ router.post('/webhook', async (req, res) => {
 
             logger.info(`Deposit processed successfully: User ${userId}, Amount $${originalAmount}, Transaction ${transaction.id}`);
 
+            // Invalidate user cache after deposit
+            await cachedUserService.invalidateUserCache(userId);
+
             // Create deposit notification
             try {
                 const notification = await NotificationService.createDepositNotification(userId, originalAmount);
@@ -675,6 +679,9 @@ router.post('/admin/approve-withdrawal', validateDescopeToken, async (req, res) 
                     await transactionalEntityManager.save(withdrawalUser);
                     await transactionalEntityManager.save(transaction);
                 });
+
+                // Invalidate user cache after withdrawal approval
+                await cachedUserService.invalidateUserCache(withdrawalUser.id);
 
                 logger.info(`Withdrawal approved and initiated: Transaction ${transaction.id}`);
 
@@ -876,6 +883,9 @@ router.post('/admin/retry-withdrawal', validateDescopeToken, async (req, res) =>
                 };
 
                 await transactionRepository.save(transaction);
+
+                // Invalidate user cache after withdrawal retry
+                await cachedUserService.invalidateUserCache(withdrawalUser.id);
 
                 logger.info(`Withdrawal retry successful: Transaction ${transaction.id}`);
 
