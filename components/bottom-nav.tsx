@@ -42,28 +42,28 @@ export default function BottomNav({ isLoggedIn, onOpenLogin, onLogin }: BottomNa
             <div className="flex justify-around items-center max-w-md mx-auto">
                 <button
                     onClick={() => router.push('/')}
-                    className="flex flex-col items-center text-white hover:text-[#ffd700] transition"
+                    className="flex flex-col items-center text-[#ffd700] hover:text-white transition"
                 >
                     <Home size={20} />
                     <span className="text-xs mt-1">Home</span>
                 </button>
                 <button
                     onClick={() => router.push('/fly')}
-                    className="flex flex-col items-center text-white hover:text-[#ffd700] transition"
+                    className="flex flex-col items-center text-[#ffd700] hover:text-white transition"
                 >
                     <Plane size={20} />
                     <span className="text-xs mt-1">Fly</span>
                 </button>
                 <button
                     onClick={() => router.push('/transactions')}
-                    className="flex flex-col items-center text-white hover:text-[#ffd700] transition"
+                    className="flex flex-col items-center text-[#ffd700] hover:text-white transition"
                 >
                     <Clock size={20} />
                     <span className="text-xs mt-1">History</span>
                 </button>
                 <button
                     onClick={() => router.push('/support')}
-                    className="flex flex-col items-center text-white hover:text-[#ffd700] transition"
+                    className="flex flex-col items-center text-[#ffd700] hover:text-white transition"
                 >
                     <HelpCircle size={20} />
                     <span className="text-xs mt-1">Support</span>
