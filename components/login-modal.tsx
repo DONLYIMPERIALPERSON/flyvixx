@@ -284,7 +284,7 @@ export default function LoginModal({ isOpen, onClose, onLogin }: LoginModalProps
                     </div>
                 ) : (
                     <Descope
-                        flowId="sign-up-or-in-passkeys-or-otp"
+                        flowId="sign-up-or-in-passwords"
                         onSuccess={handleDescopeSuccess}
                         onError={handleDescopeError}
                         onReady={handleSdkReady}
