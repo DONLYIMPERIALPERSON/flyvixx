@@ -147,7 +147,7 @@ export default function SupportPage() {
             {showChatModal && (
                 <div className="fixed inset-0 z-50 flex items-end justify-center">
                     <div className="absolute inset-0 bg-black/50" onClick={handleCloseChat}></div>
-                    <div className={`bg-white rounded-t-xl w-full max-w-xl h-[95vh] max-h-[800px] transform transition-transform duration-300 ${showChatModal ? 'translate-y-0' : 'translate-y-full'}`}>
+                    <div className={`bg-white rounded-t-xl w-full max-w-xl h-[85vh] max-h-[700px] transform transition-transform duration-300 ${showChatModal ? 'translate-y-0' : 'translate-y-full'}`}>
                         <div className="p-2 border-b border-gray-200">
                             <div className="flex justify-center mb-1">
                                 <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
