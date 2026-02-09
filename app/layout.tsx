@@ -151,19 +151,19 @@ export default function RootLayout({
                             z-index: 9999 !important;
                         }
 
-                        /* Force HubSpot inline chat to be larger */
+                        /* Force HubSpot inline chat to be appropriately sized */
                         #hubspot-chat-container iframe,
                         #hubspot-chat-container .hs-conversations-iframe,
                         #hubspot-chat-container .hs-conversations-widget {
                             width: 100% !important;
-                            height: 720px !important;
-                            min-height: 720px !important;
-                            max-height: 750px !important;
+                            height: 600px !important;
+                            min-height: 600px !important;
+                            max-height: 620px !important;
                         }
 
-                        /* Make chat messages area larger */
+                        /* Make chat messages area appropriately sized */
                         .hs-conversations-messages {
-                            min-height: 500px !important;
+                            min-height: 450px !important;
                         }
 
                         /* Ensure input area is properly sized */

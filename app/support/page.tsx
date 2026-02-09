@@ -61,16 +61,16 @@ export default function SupportPage() {
                             setTimeout(() => {
                                 const container = document.getElementById('hubspot-chat-container');
                                 if (container) {
-                                    // Force the container and its contents to be larger
-                                    container.style.height = '720px';
-                                    container.style.minHeight = '720px';
+                                    // Force the container and its contents to be appropriately sized
+                                    container.style.height = '600px';
+                                    container.style.minHeight = '600px';
 
                                     // Try to resize any iframes inside
                                     const iframes = container.querySelectorAll('iframe');
                                     iframes.forEach(iframe => {
                                         iframe.style.width = '100%';
-                                        iframe.style.height = '720px';
-                                        iframe.style.minHeight = '720px';
+                                        iframe.style.height = '600px';
+                                        iframe.style.minHeight = '600px';
                                     });
                                 }
                             }, 3000);
@@ -179,34 +179,34 @@ export default function SupportPage() {
                                     className="w-full h-full overflow-hidden"
                                     style={{
                                         height: 'calc(100% - 0px)',
-                                        minHeight: '720px',
-                                        maxHeight: '750px'
+                                        minHeight: '600px',
+                                        maxHeight: '620px'
                                     }}
                                 >
-                                    {/* Custom CSS to make HubSpot chat larger */}
+                                    {/* Custom CSS to make HubSpot chat appropriately sized */}
                                     <style>
                                         {`
                                             #hubspot-chat-container iframe {
                                                 width: 100% !important;
                                                 height: 100% !important;
-                                                min-height: 720px !important;
-                                                max-height: 750px !important;
+                                                min-height: 600px !important;
+                                                max-height: 620px !important;
                                             }
                                             #hubspot-chat-container .hs-conversations-widget {
                                                 width: 100% !important;
                                                 height: 100% !important;
-                                                min-height: 720px !important;
-                                                max-height: 750px !important;
+                                                min-height: 600px !important;
+                                                max-height: 620px !important;
                                             }
                                             #hubspot-chat-container .hs-conversations-iframe {
                                                 width: 100% !important;
                                                 height: 100% !important;
-                                                min-height: 720px !important;
-                                                max-height: 750px !important;
+                                                min-height: 600px !important;
+                                                max-height: 620px !important;
                                             }
-                                            /* Make the chat input area larger */
+                                            /* Make the chat input area appropriately sized */
                                             #hubspot-chat-container .hs-conversations-widget .hs-conversations-messages {
-                                                min-height: 500px !important;
+                                                min-height: 450px !important;
                                             }
                                             /* Ensure the widget takes full container space */
                                             #hubspot-chat-container > div {
