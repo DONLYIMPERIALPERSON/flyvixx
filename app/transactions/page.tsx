@@ -140,12 +140,19 @@ export default function TransactionsPage() {
                                             </div>
                                             <div className="text-right">
                                                 <p className={`font-bold ${
-                                                    transaction.type === 'withdrawal' || transaction.type === 'bet_placed' || transaction.type === 'lock_funds'
+                                                    transaction.type === 'withdrawal' ||
+                                                    transaction.type === 'bet_placed' ||
+                                                    transaction.type === 'lock_funds' ||
+                                                    (transaction.type === 'transfer' && transaction.metadata?.direction === 'out')
                                                         ? 'text-red-400'
                                                         : 'text-green-400'
                                                 }`}>
-                                                    {transaction.type === 'withdrawal' || transaction.type === 'bet_placed' || transaction.type === 'lock_funds' ? '-' : '+'}
-                                                    ${transaction.amount.toFixed(2)}
+                                                    {transaction.type === 'withdrawal' ||
+                                                     transaction.type === 'bet_placed' ||
+                                                     transaction.type === 'lock_funds' ||
+                                                     (transaction.type === 'transfer' && transaction.metadata?.direction === 'out')
+                                                         ? '-' : '+'}
+                                                    ${Math.abs(transaction.amount).toFixed(2)}
                                                 </p>
                                                 <p className="text-white/70 text-xs capitalize">{transaction.status}</p>
                                             </div>
