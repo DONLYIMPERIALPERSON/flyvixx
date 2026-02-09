@@ -56,6 +56,24 @@ export default function SupportPage() {
                         if (window.HubSpotConversations?.widget?.load) {
                             window.HubSpotConversations.widget.load();
                             window.HubSpotConversations.widget.open();
+
+                            // Force resize the widget after loading
+                            setTimeout(() => {
+                                const container = document.getElementById('hubspot-chat-container');
+                                if (container) {
+                                    // Force the container and its contents to be larger
+                                    container.style.height = '720px';
+                                    container.style.minHeight = '720px';
+
+                                    // Try to resize any iframes inside
+                                    const iframes = container.querySelectorAll('iframe');
+                                    iframes.forEach(iframe => {
+                                        iframe.style.width = '100%';
+                                        iframe.style.height = '720px';
+                                        iframe.style.minHeight = '720px';
+                                    });
+                                }
+                            }, 3000);
                         }
                     }, 2000);
                 };
@@ -129,9 +147,9 @@ export default function SupportPage() {
             {showChatModal && (
                 <div className="fixed inset-0 z-50 flex items-end justify-center">
                     <div className="absolute inset-0 bg-black/50" onClick={handleCloseChat}></div>
-                    <div className={`bg-white rounded-t-xl w-full max-w-md h-[80vh] max-h-[600px] transform transition-transform duration-300 ${showChatModal ? 'translate-y-0' : 'translate-y-full'}`}>
-                        <div className="p-4 border-b border-gray-200">
-                            <div className="flex justify-center mb-3">
+                    <div className={`bg-white rounded-t-xl w-full max-w-xl h-[95vh] max-h-[800px] transform transition-transform duration-300 ${showChatModal ? 'translate-y-0' : 'translate-y-full'}`}>
+                        <div className="p-2 border-b border-gray-200">
+                            <div className="flex justify-center mb-1">
                                 <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
                             </div>
 
@@ -148,9 +166,9 @@ export default function SupportPage() {
                         </div>
 
                         {/* Chat Container */}
-                        <div className="flex-1 h-full p-4">
+                        <div className="flex-1 h-full">
                             {!chatLoaded ? (
-                                <div className="flex flex-col items-center justify-center h-full text-center">
+                                <div className="flex flex-col items-center justify-center h-full text-center p-6">
                                     <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#FFD700]/20 border-t-[#FFD700] mx-auto mb-4"></div>
                                     <p className="text-gray-600 mb-2">Connecting to support...</p>
                                     <p className="text-sm text-gray-500">Please wait while we load the chat interface</p>
@@ -158,9 +176,45 @@ export default function SupportPage() {
                             ) : (
                                 <div
                                     id="hubspot-chat-container"
-                                    className="w-full h-full rounded-lg overflow-hidden"
-                                    style={{ height: 'calc(100% - 2rem)', minHeight: '450px' }}
+                                    className="w-full h-full overflow-hidden"
+                                    style={{
+                                        height: 'calc(100% - 0px)',
+                                        minHeight: '720px',
+                                        maxHeight: '750px'
+                                    }}
                                 >
+                                    {/* Custom CSS to make HubSpot chat larger */}
+                                    <style>
+                                        {`
+                                            #hubspot-chat-container iframe {
+                                                width: 100% !important;
+                                                height: 100% !important;
+                                                min-height: 720px !important;
+                                                max-height: 750px !important;
+                                            }
+                                            #hubspot-chat-container .hs-conversations-widget {
+                                                width: 100% !important;
+                                                height: 100% !important;
+                                                min-height: 720px !important;
+                                                max-height: 750px !important;
+                                            }
+                                            #hubspot-chat-container .hs-conversations-iframe {
+                                                width: 100% !important;
+                                                height: 100% !important;
+                                                min-height: 720px !important;
+                                                max-height: 750px !important;
+                                            }
+                                            /* Make the chat input area larger */
+                                            #hubspot-chat-container .hs-conversations-widget .hs-conversations-messages {
+                                                min-height: 500px !important;
+                                            }
+                                            /* Ensure the widget takes full container space */
+                                            #hubspot-chat-container > div {
+                                                width: 100% !important;
+                                                height: 100% !important;
+                                            }
+                                        `}
+                                    </style>
                                     {/* HubSpot chat will be embedded here */}
                                 </div>
                             )}
