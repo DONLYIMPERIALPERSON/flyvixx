@@ -17,6 +17,7 @@ export interface DashboardMetrics {
   allTimeCredits: number;
   availableBalance: number;
   totalLockedFunds: number;
+  totalUserCashBalance: number;
 }
 
 export class AdminDashboardService {
@@ -149,6 +150,15 @@ export class AdminDashboardService {
 
       const totalLockedFunds = parseFloat(totalLockedFundsResult?.total || '0');
 
+      // 14. Total User Cash Balance - sum of all users' cash balances
+      const totalUserCashBalanceResult = await userRepository
+        .createQueryBuilder('user')
+        .select('SUM(user.cashBalance)', 'total')
+        .where('user.status = :status', { status: UserStatus.ACTIVE })
+        .getRawOne();
+
+      const totalUserCashBalance = parseFloat(totalUserCashBalanceResult?.total || '0');
+
       logger.info('Dashboard metrics calculated successfully');
 
       return {
@@ -164,7 +174,8 @@ export class AdminDashboardService {
         allTimeDebit,
         allTimeCredits,
         availableBalance,
-        totalLockedFunds
+        totalLockedFunds,
+        totalUserCashBalance
       };
 
     } catch (error) {

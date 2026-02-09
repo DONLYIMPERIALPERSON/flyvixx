@@ -123,11 +123,11 @@ export default function AdminDashboardPage() {
                         bgColor: 'bg-red-500/20'
                     },
                     {
-                        title: 'All Time Credits',
-                        value: `$${data.data.allTimeCredits.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-                        icon: <PlusCircle size={24} />,
-                        color: 'text-green-400',
-                        bgColor: 'bg-green-500/20'
+                        title: 'Total Cash Balance (Users)',
+                        value: `$${data.data.totalUserCashBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+                        icon: <Wallet size={24} />,
+                        color: 'text-emerald-400',
+                        bgColor: 'bg-emerald-500/20'
                     },
                     {
                         title: 'Available Balance',
