@@ -25,3 +25,16 @@ export interface IFaq {
     question: string;
     answer: string;
 }
+
+// HubSpot Live Chat Type Declarations
+declare global {
+    interface Window {
+        HubSpotConversations?: {
+            widget: {
+                open: () => void;
+                close: () => void;
+            };
+        };
+        hsConversationsOnReady?: Array<() => void>;
+    }
+}

@@ -135,6 +135,16 @@ export default function RootLayout({
                         __html: JSON.stringify(structuredData),
                     }}
                 />
+                {/* HubSpot Live Chat Tracking Code */}
+                <script type="text/javascript" id="hs-script-loader" async defer src="//js-eu1.hs-scripts.com/147732252.js"></script>
+                {/* Hide default HubSpot chat launcher */}
+                <style>
+                    {`
+                        #hubspot-messages-iframe-container:not(.widget-open) {
+                            display: none !important;
+                        }
+                    `}
+                </style>
             </head>
             <body>
                 <Providers>

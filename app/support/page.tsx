@@ -12,12 +12,16 @@ export default function SupportPage() {
         router.push('/');
     };
 
-    const handleTelegramChat = () => {
-        window.open('https://t.me/flyvixx_support', '_blank');
-    };
-
-    const handleTelegramJoin = () => {
-        window.open('https://t.me/flyvixxcommunity', '_blank');
+    const handleLiveChat = () => {
+        if (window.HubSpotConversations?.widget) {
+            window.HubSpotConversations.widget.open();
+        } else {
+            // Fallback if widget isn't loaded yet
+            window.hsConversationsOnReady = window.hsConversationsOnReady || [];
+            window.hsConversationsOnReady.push(function() {
+                window.HubSpotConversations?.widget?.open();
+            });
+        }
     };
 
     const handleEmailSend = () => {
@@ -41,25 +45,17 @@ export default function SupportPage() {
                         {/* Support Text */}
                         <h2 className="text-white text-xl font-bold mb-4">Customer Support</h2>
                         <p className="text-white/80 text-sm leading-relaxed mb-8">
-                            Chat with our customer care representative on Telegram or send us an email
+                            Chat with our customer care representative or send us an email
                         </p>
 
                         {/* Support Buttons */}
                         <div className="space-y-4">
                             <button
-                                onClick={handleTelegramChat}
+                                onClick={handleLiveChat}
                                 className="w-full bg-[#0088cc] text-white py-4 px-6 rounded-lg font-medium hover:bg-[#0077b3] transition-colors flex items-center justify-center space-x-3"
                             >
-                                <Send size={20} />
-                                <span>Chat on Telegram</span>
-                            </button>
-
-                            <button
-                                onClick={handleTelegramJoin}
-                                className="w-full bg-[#0088cc] text-white py-4 px-6 rounded-lg font-medium hover:bg-[#0077b3] transition-colors flex items-center justify-center space-x-3"
-                            >
-                                <Send size={20} />
-                                <span>Join Telegram Community</span>
+                                <MessageCircle size={20} />
+                                <span>Live Chat Support</span>
                             </button>
 
                             <button
