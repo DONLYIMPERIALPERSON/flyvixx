@@ -1,31 +1,79 @@
 'use client';
 
 import { useRouter } from "next/navigation";
-import { MessageCircle, Mail, Send } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MessageCircle, Mail, X } from "lucide-react";
 import TransactionHeader from "../../components/transaction-header";
 import LoginGuard from "../../components/login-guard";
 
 export default function SupportPage() {
     const router = useRouter();
+    const [showChatModal, setShowChatModal] = useState(false);
+    const [chatLoaded, setChatLoaded] = useState(false);
 
     const handleBack = () => {
         router.push('/');
     };
 
     const handleLiveChat = () => {
-        if (window.HubSpotConversations?.widget) {
-            window.HubSpotConversations.widget.open();
-        } else {
-            // Fallback if widget isn't loaded yet
-            window.hsConversationsOnReady = window.hsConversationsOnReady || [];
-            window.hsConversationsOnReady.push(function() {
-                window.HubSpotConversations?.widget?.open();
-            });
-        }
+        setShowChatModal(true);
     };
 
     const handleEmailSend = () => {
         window.location.href = 'mailto:help@flyvixx.com';
+    };
+
+    useEffect(() => {
+        if (showChatModal && !chatLoaded) {
+            // Configure HubSpot for inline embedding
+            window.hsConversationsSettings = {
+                loadImmediately: false,
+                inlineEmbedSelector: '#hubspot-chat-container',
+                enableWidgetCookieBanner: false,
+                disableAttachment: false
+            };
+
+            // Check if HubSpot is already loaded
+            if (window.HubSpotConversations?.widget) {
+                // HubSpot already loaded, just load and open it
+                setChatLoaded(true);
+                setTimeout(() => {
+                    if (window.HubSpotConversations?.widget?.load) {
+                        window.HubSpotConversations.widget.load();
+                        window.HubSpotConversations.widget.open();
+                    }
+                }, 500);
+            } else {
+                // Load HubSpot chat widget when modal opens
+                const script = document.createElement('script');
+                script.src = '//js-eu1.hs-scripts.com/147732252.js';
+                script.async = true;
+                script.defer = true;
+                script.onload = () => {
+                    setChatLoaded(true);
+                    // Wait a bit for HubSpot to initialize, then load and open the widget
+                    setTimeout(() => {
+                        if (window.HubSpotConversations?.widget?.load) {
+                            window.HubSpotConversations.widget.load();
+                            window.HubSpotConversations.widget.open();
+                        }
+                    }, 2000);
+                };
+                document.head.appendChild(script);
+            }
+        }
+    }, [showChatModal, chatLoaded]);
+
+    const handleCloseChat = () => {
+        setShowChatModal(false);
+        setChatLoaded(false);
+        // Close and remove HubSpot widget when modal closes
+        if (window.HubSpotConversations?.widget?.close) {
+            window.HubSpotConversations.widget.close();
+        }
+        if (window.HubSpotConversations?.widget?.remove) {
+            window.HubSpotConversations.widget.remove();
+        }
     };
 
     return (
@@ -76,6 +124,50 @@ export default function SupportPage() {
                     </div>
                 </div>
             </main>
+
+            {/* Chat Modal - Bottom slide-up modal like other modals */}
+            {showChatModal && (
+                <div className="fixed inset-0 z-50 flex items-end justify-center">
+                    <div className="absolute inset-0 bg-black/50" onClick={handleCloseChat}></div>
+                    <div className={`bg-white rounded-t-xl w-full max-w-md h-[80vh] max-h-[600px] transform transition-transform duration-300 ${showChatModal ? 'translate-y-0' : 'translate-y-full'}`}>
+                        <div className="p-4 border-b border-gray-200">
+                            <div className="flex justify-center mb-3">
+                                <div className="w-12 h-1 bg-gray-300 rounded-full"></div>
+                            </div>
+
+                            {/* Modal Header */}
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-gray-800">Live Chat Support</h3>
+                                <button
+                                    onClick={handleCloseChat}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X size={20} className="text-gray-500" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Chat Container */}
+                        <div className="flex-1 h-full p-4">
+                            {!chatLoaded ? (
+                                <div className="flex flex-col items-center justify-center h-full text-center">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-[#FFD700]/20 border-t-[#FFD700] mx-auto mb-4"></div>
+                                    <p className="text-gray-600 mb-2">Connecting to support...</p>
+                                    <p className="text-sm text-gray-500">Please wait while we load the chat interface</p>
+                                </div>
+                            ) : (
+                                <div
+                                    id="hubspot-chat-container"
+                                    className="w-full h-full rounded-lg overflow-hidden"
+                                    style={{ height: 'calc(100% - 2rem)', minHeight: '450px' }}
+                                >
+                                    {/* HubSpot chat will be embedded here */}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
         </LoginGuard>
     );

@@ -31,10 +31,18 @@ declare global {
     interface Window {
         HubSpotConversations?: {
             widget: {
+                load: () => void;
                 open: () => void;
                 close: () => void;
+                remove: () => void;
             };
         };
         hsConversationsOnReady?: Array<() => void>;
+        hsConversationsSettings?: {
+            loadImmediately?: boolean;
+            inlineEmbedSelector?: string;
+            enableWidgetCookieBanner?: boolean;
+            disableAttachment?: boolean;
+        };
     }
 }

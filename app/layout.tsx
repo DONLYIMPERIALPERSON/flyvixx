@@ -135,13 +135,20 @@ export default function RootLayout({
                         __html: JSON.stringify(structuredData),
                     }}
                 />
-                {/* HubSpot Live Chat Tracking Code */}
-                <script type="text/javascript" id="hs-script-loader" async defer src="//js-eu1.hs-scripts.com/147732252.js"></script>
-                {/* Hide default HubSpot chat launcher */}
+                {/* HubSpot chat styles - hide by default, show when triggered */}
                 <style>
                     {`
+                        #hubspot-messages-iframe-container.widget-closed,
                         #hubspot-messages-iframe-container:not(.widget-open) {
                             display: none !important;
+                        }
+                        /* Hide the default launcher button */
+                        #hs-chat-launcher {
+                            display: none !important;
+                        }
+                        /* Ensure chat appears above modals when opened */
+                        #hubspot-messages-iframe-container.widget-open {
+                            z-index: 9999 !important;
                         }
                     `}
                 </style>
