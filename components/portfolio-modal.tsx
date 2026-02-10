@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import { X, TrendingUp, Calendar, Plane, Share2 } from "lucide-react";
+import { useState, useEffect, useRef, memo } from "react";
+import { X, TrendingUp, Calendar, Plane, Share2, Gift } from "lucide-react";
 import { useSession } from "@descope/react-sdk";
 
 interface PortfolioInfo {
@@ -15,6 +15,16 @@ interface PortfolioInfo {
     activeReferrals?: number;
 }
 
+interface GiftInfo {
+    dailyGifts: number;
+    giftsLastReset: string | null;
+    nextResetTime: string;
+    hoursUntilReset: number;
+    minutesUntilReset: number;
+    secondsUntilReset: number;
+    giftsGivenToday: boolean;
+}
+
 interface PortfolioModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -22,16 +32,20 @@ interface PortfolioModalProps {
     userData?: {
         totalFlies?: number;
         totalPortfolioProfit?: number;
+        dailyGifts?: number;
     } | null;
     onDataRefresh?: () => void;
 }
 
-export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, userData: initialUserData, onDataRefresh }: PortfolioModalProps) {
+function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, userData: initialUserData, onDataRefresh }: PortfolioModalProps) {
     const { sessionToken } = useSession();
     const [shareMessage, setShareMessage] = useState('');
     const [portfolioInfo, setPortfolioInfo] = useState<PortfolioInfo | null>(initialPortfolioInfo || null);
     const [userData, setUserData] = useState(initialUserData || null);
     const [isLoading, setIsLoading] = useState(false);
+    const [giftInfo, setGiftInfo] = useState<GiftInfo | null>(null);
+    const timerStartedRef = useRef(false);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Fetch fresh portfolio data when modal opens
     useEffect(() => {
@@ -49,6 +63,45 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
             setUserData(initialUserData);
         }
     }, [initialPortfolioInfo, initialUserData]);
+
+    // Start timer when data becomes available (only once per modal session)
+    useEffect(() => {
+        if (isOpen && userData?.dailyGifts !== undefined && !timerStartedRef.current) {
+            console.log('🎯 Starting live countdown timer');
+            timerStartedRef.current = true;
+
+            // Start countdown immediately
+            calculateGiftTimer();
+
+            // Update every second
+            intervalRef.current = setInterval(() => {
+                calculateGiftTimer();
+            }, 1000);
+        }
+    }, [isOpen, userData?.dailyGifts]); // Start when data becomes available
+
+    // Reset timer flag when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+                console.log('🛑 Stopping live countdown timer');
+            }
+            timerStartedRef.current = false;
+        }
+    }, [isOpen]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (intervalRef.current) {
+                clearInterval(intervalRef.current);
+                intervalRef.current = null;
+                console.log('🛑 Stopping live countdown timer on unmount');
+            }
+        };
+    }, []);
 
     const fetchPortfolioInfo = async () => {
         try {
@@ -101,7 +154,8 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
                     // Update local userData state with fresh data
                     setUserData({
                         totalFlies: userDataResponse.user.totalFlies || 0,
-                        totalPortfolioProfit: Number(userDataResponse.user.totalPortfolioProfit || 0)
+                        totalPortfolioProfit: Number(userDataResponse.user.totalPortfolioProfit || 0),
+                        dailyGifts: userDataResponse.user.dailyGifts || 0
                     });
 
                     // Call the parent refresh callback to update the data
@@ -110,7 +164,8 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
                     }
                     console.log('User data updated locally and parent refreshed:', {
                         totalFlies: userDataResponse.user.totalFlies,
-                        totalPortfolioProfit: userDataResponse.user.totalPortfolioProfit
+                        totalPortfolioProfit: userDataResponse.user.totalPortfolioProfit,
+                        dailyGifts: userDataResponse.user.dailyGifts
                     });
                 }
             }
@@ -135,18 +190,44 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
     const daysPassed = totalDays - effectiveDaysLeft;
     const progressPercentage = (daysPassed / totalDays) * 100;
 
-    // Debug logging
-    console.log('PortfolioModal render:', {
-        portfolioInfo,
-        hasLockedFunds: portfolioInfo?.hasLockedFunds,
-        daysLeft,
-        effectiveDaysLeft,
-        daysPassed,
-        progressPercentage,
-        display: portfolioInfo?.hasLockedFunds ? `${daysPassed}/${totalDays}` : '0/30'
-    });
+    // Removed excessive debug logging to prevent console spam and improve performance
 
 
+
+    const calculateGiftTimer = () => {
+        if (!userData?.dailyGifts) return;
+
+        const now = new Date();
+        // Calculate next midnight (when gifts reset)
+        const nextMidnight = new Date(now);
+        nextMidnight.setHours(24, 0, 0, 0); // Set to next midnight
+
+        const timeUntilReset = nextMidnight.getTime() - now.getTime();
+        const hoursUntilReset = Math.floor(timeUntilReset / (1000 * 60 * 60));
+        const minutesUntilReset = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
+        const secondsUntilReset = Math.floor((timeUntilReset % (1000 * 60)) / 1000);
+
+        // Check if gifts were given today (within last 24 hours)
+        const giftsGivenToday = userData.dailyGifts > 0;
+
+        console.log('🎁 Gift timer calculated:', {
+            now: now.toISOString(),
+            nextMidnight: nextMidnight.toISOString(),
+            timeUntilReset,
+            countdown: `${hoursUntilReset}:${minutesUntilReset}:${secondsUntilReset}`,
+            dailyGifts: userData.dailyGifts
+        });
+
+        setGiftInfo({
+            dailyGifts: userData.dailyGifts,
+            giftsLastReset: null, // We don't have this from the API yet
+            nextResetTime: nextMidnight.toISOString(),
+            hoursUntilReset,
+            minutesUntilReset,
+            secondsUntilReset,
+            giftsGivenToday
+        });
+    };
 
     const handleShare = () => {
         setShareMessage('Portfolio shared successfully!');
@@ -253,6 +334,42 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
                             </div>
                         </div>
 
+                        {/* Gift Timer - Only show if user has locked funds */}
+                        {portfolioInfo?.hasLockedFunds && giftInfo && (
+                            <div className="mb-6">
+                                <div className="bg-white/10 rounded-lg p-4">
+                                    {/* Available Gifts with Icons */}
+                                    <div className="mb-4">
+                                        <div className="text-sm opacity-80 mb-2">Available Gifts</div>
+                                        <div className="flex flex-wrap gap-1">
+                                            {Array.from({ length: giftInfo.dailyGifts }, (_, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="bg-green-500 hover:bg-green-600 border border-white/20 rounded-md py-1 px-2 text-white text-xs font-medium transition-colors flex items-center space-x-1"
+                                                >
+                                                    <Gift size={12} />
+                                                    <span>{index + 1}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Next Gift Time */}
+                                    <div>
+                                        <div className="text-sm opacity-80 mb-2">Next Gift Time</div>
+                                        <div className="text-lg font-bold text-[#FFD700] font-mono">
+                                            {String(giftInfo.hoursUntilReset).padStart(2, '0')}:
+                                            {String(giftInfo.minutesUntilReset).padStart(2, '0')}:
+                                            {String(giftInfo.secondsUntilReset).padStart(2, '0')}
+                                        </div>
+                                        <div className="text-xs opacity-60 mt-1">
+                                            Daily reset at midnight
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Performance Indicator */}
                         <div className="text-center">
                             <div className="inline-flex items-center space-x-2 bg-green-500/20 px-4 py-2 rounded-full">
@@ -287,3 +404,5 @@ export default function PortfolioModal({ isOpen, onClose, portfolioInfo: initial
         </div>
     );
 }
+
+export default memo(PortfolioModal);

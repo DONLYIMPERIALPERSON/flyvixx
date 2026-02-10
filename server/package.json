@@ -9,6 +9,10 @@
     "start": "node dist/index.js",
     "add-admin": "ts-node scripts/add-admin.ts",
     "daily-gift-reset": "ts-node scripts/daily-gift-reset.ts",
+    "simulate-deposit": "ts-node scripts/simulate-deposit.ts",
+    "test-daily-gifts": "ts-node scripts/test-daily-gift-system.ts",
+    "simulate-day-2": "ts-node scripts/simulate-day-2.ts",
+    "simulate-30-day-lock": "ts-node scripts/simulate-30-day-lock.ts",
     "lint": "eslint src/**/*.ts",
     "test": "jest"
   },

@@ -359,12 +359,9 @@ router.post('/lock-funds', validateDescopeToken, async (req, res) => {
       });
     }
 
-    // Calculate lock period (30 days from now for a full 30-day lock)
-    const lockedUntil = new Date();
-    lockedUntil.setDate(lockedUntil.getDate() + 30);
-
-    // Ensure we get exactly 30 days by setting time to end of day
-    lockedUntil.setHours(23, 59, 59, 999);
+    // Calculate exact lock period: 30 days from lock time
+    const lockTime = new Date();
+    const lockedUntil = new Date(lockTime.getTime() + (30 * 24 * 60 * 60 * 1000)); // Exactly 30 days in milliseconds
 
     // Check if this is the user's first time EVER locking funds (by checking transaction history)
     const previousLockTransactions = await transactionRepository.count({

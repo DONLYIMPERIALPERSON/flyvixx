@@ -21,7 +21,7 @@ interface Balance {
 
 export default function BalanceArea({ isLoggedIn }: BalanceAreaProps) {
     const { sessionToken } = useSession();
-    const [visible, setVisible] = useState(false);
+    const [visible, setVisible] = useState(true);
     const [showDepositModal, setShowDepositModal] = useState(false);
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
