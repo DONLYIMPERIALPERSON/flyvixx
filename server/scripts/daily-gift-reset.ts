@@ -40,7 +40,7 @@ async function resetDailyGiftsForLockedUsers() {
     // Find all users with locked funds > 0
     // Note: TypeORM doesn't support direct > comparison with decimals, so we get all users and filter
     const allUsers = await userRepository.find({
-      select: ['id', 'email', 'level', 'lockedFunds', 'dailyGifts', 'giftsLastReset']
+      select: ['id', 'email', 'level', 'lockedFunds', 'dailyGifts', 'giftsLastReset', 'referredBy']
     });
 
     // Filter users with locked funds > 0
@@ -53,6 +53,25 @@ async function resetDailyGiftsForLockedUsers() {
 
     for (const user of eligibleUsers) {
       try {
+        // Calculate current level based on active referrals
+        const referredUsers = await userRepository.find({
+          where: { referredBy: user.id },
+          select: ['lockedFunds']
+        });
+
+        // Calculate active referrals (users with locked funds > 0)
+        const activeReferrals = referredUsers.filter(ref => Number(ref.lockedFunds) > 0).length;
+
+        // Calculate level: base level 1 + floor(activeReferrals / 5)
+        const currentLevel = 1 + Math.floor(activeReferrals / 5);
+
+        // Update user's level in database if it changed
+        if (user.level !== currentLevel) {
+          user.level = currentLevel;
+          await userRepository.save(user);
+          logger.info(`📈 Updated user ${user.id} level from ${user.level} to ${currentLevel}`);
+        }
+
         // Check if gifts were already reset today (within last 24 hours)
         const now = new Date();
         const lastReset = user.giftsLastReset ? new Date(user.giftsLastReset) : null;
@@ -61,7 +80,7 @@ async function resetDailyGiftsForLockedUsers() {
         // Only reset if it's been more than 24 hours since last reset
         if (hoursSinceLastReset >= 24) {
           // Calculate fresh daily gifts based on current level (level 1 = 2 gifts, level 2 = 4 gifts, etc.)
-          const freshGifts = user.level * 2;
+          const freshGifts = currentLevel * 2;
 
           // Replace existing gifts with fresh daily amount (old unused gifts disappear)
           user.dailyGifts = freshGifts;
@@ -72,7 +91,7 @@ async function resetDailyGiftsForLockedUsers() {
           resetCount++;
           totalGiftsGiven += freshGifts;
 
-          logger.info(`✅ Daily gift reset for user ${user.id} (${user.email}): ${freshGifts} fresh gifts (level ${user.level})`);
+          logger.info(`✅ Daily gift reset for user ${user.id} (${user.email}): ${freshGifts} fresh gifts (level ${currentLevel}, active referrals: ${activeReferrals})`);
         } else {
           logger.info(`⏰ Skipping user ${user.id} - gifts already reset ${hoursSinceLastReset.toFixed(1)} hours ago`);
         }

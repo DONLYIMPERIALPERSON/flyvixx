@@ -520,7 +520,7 @@ router.get('/portfolio', validateDescopeToken, async (req, res) => {
 
     // Recalculate lock status after potential auto-unlock
     const isLocked = user.lockedFunds > 0 && user.lockedUntil && user.lockedUntil > now;
-    const daysLeft = user.lockedUntil ? Math.max(1, Math.ceil((user.lockedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
+    const daysLeft = user.lockedUntil && user.lockedUntil > now ? Math.max(1, Math.floor((user.lockedUntil.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))) : 0;
 
     const response: any = {
       success: true,
