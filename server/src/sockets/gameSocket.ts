@@ -396,9 +396,7 @@ const placeBet = async (userId: string, amount: number, betType: BetType, safePl
       logger.info(`💰 Cash balance updated: $${cashBalance} -> $${user.cashBalance}`);
 
     } else if (betType === BetType.PORTFOLIO) {
-      // Portfolio bet - check and consume gift
-      await checkAndResetGiftsIfNeeded(userId); // Refresh gifts if needed
-
+      // Portfolio bet - consume gift (gifts are reset daily by cron job)
       const updatedUser = await consumeGiftForUser(userId, userRepository);
       if (!updatedUser) {
         logger.error(`❌ No gifts available for user ${userId}`);
