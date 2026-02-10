@@ -1,8 +1,34 @@
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, '../../.env') });
+
+// Create SMTP transporter for AWS SES
+const createTransporter = () => {
+  console.log('📧 Creating AWS SES SMTP transporter...');
+  console.log('  Host:', process.env.AWS_SES_SMTP_HOST);
+  console.log('  Port:', process.env.AWS_SES_SMTP_PORT);
+  console.log('  Username:', process.env.AWS_SES_SMTP_USERNAME ? '***SET***' : 'NOT SET');
+
+  return nodemailer.createTransport({
+    host: process.env.AWS_SES_SMTP_HOST,
+    port: parseInt(process.env.AWS_SES_SMTP_PORT || '587'),
+    secure: false, // true for 465, false for other ports
+    auth: {
+      user: process.env.AWS_SES_SMTP_USERNAME,
+      pass: process.env.AWS_SES_SMTP_PASSWORD,
+    },
+    // AWS SES requires TLS
+    tls: {
+      ciphers: 'SSLv3',
+    },
+  });
+};
+
+const transporter = createTransporter();
 
 export interface EmailOptions {
     to: string;
@@ -54,15 +80,17 @@ export class EmailService {
             // Use OTP code in subject to prevent email threading
             const subject = `Flyvixx OTP Code - ${otpCode}`;
 
-            const result = await resend.emails.send({
-                from: 'Flyvixx Security <security@mail.flyvixx.com>',
-                to: [email],
+            const mailOptions = {
+                from: `${process.env.AWS_SES_FROM_NAME} <${process.env.AWS_SES_FROM_EMAIL}>`,
+                to: email,
                 subject: subject,
                 html: htmlContent,
                 text: textContent,
-            });
+            };
 
-            console.log('📧 OTP email sent successfully:', result);
+            const result = await transporter.sendMail(mailOptions);
+
+            console.log('📧 OTP email sent successfully:', result.messageId);
             return true;
         } catch (error) {
             console.error('❌ Failed to send OTP email:', error);
@@ -86,15 +114,17 @@ export class EmailService {
             // Admin-specific subject
             const subject = `Flyvixx Admin OTP Code - ${otpCode}`;
 
-            const result = await resend.emails.send({
-                from: 'Flyvixx Admin Security <admin-security@mail.flyvixx.com>',
-                to: [email],
+            const mailOptions = {
+                from: `${process.env.AWS_SES_FROM_NAME} <${process.env.AWS_SES_FROM_EMAIL}>`,
+                to: email,
                 subject: subject,
                 html: htmlContent,
                 text: textContent,
-            });
+            };
 
-            console.log('📧 Admin OTP email sent successfully:', result);
+            const result = await transporter.sendMail(mailOptions);
+
+            console.log('📧 Admin OTP email sent successfully:', result.messageId);
             return true;
         } catch (error) {
             console.error('❌ Failed to send admin OTP email:', error);
@@ -119,15 +149,17 @@ export class EmailService {
             const randomNumber = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
             const subject = `Flyvixx - Deposit Successful ${randomNumber}`;
 
-            const result = await resend.emails.send({
-                from: 'Flyvixx <noreply@mail.flyvixx.com>',
-                to: [email],
+            const mailOptions = {
+                from: `${process.env.AWS_SES_FROM_NAME} <${process.env.AWS_SES_FROM_EMAIL}>`,
+                to: email,
                 subject: subject,
                 html: htmlContent,
                 text: textContent,
-            });
+            };
 
-            console.log('📧 Deposit notification email sent successfully:', result);
+            const result = await transporter.sendMail(mailOptions);
+
+            console.log('📧 Deposit notification email sent successfully:', result.messageId);
             return true;
         } catch (error) {
             console.error('❌ Failed to send deposit notification email:', error);
@@ -155,22 +187,24 @@ export class EmailService {
             const subject = `Flyvixx - Withdrawal Processed ${randomNumber}`;
 
             console.log('📧 Email data prepared:', {
-                from: 'Flyvixx <noreply@mail.flyvixx.com>',
-                to: [email],
+                from: `${process.env.AWS_SES_FROM_NAME} <${process.env.AWS_SES_FROM_EMAIL}>`,
+                to: email,
                 subject: subject,
                 htmlLength: htmlContent.length,
                 textLength: textContent.length
             });
 
-            const result = await resend.emails.send({
-                from: 'Flyvixx <noreply@mail.flyvixx.com>',
-                to: [email],
+            const mailOptions = {
+                from: `${process.env.AWS_SES_FROM_NAME} <${process.env.AWS_SES_FROM_EMAIL}>`,
+                to: email,
                 subject: subject,
                 html: htmlContent,
                 text: textContent,
-            });
+            };
 
-            console.log('📧 Withdrawal notification email sent successfully:', result);
+            const result = await transporter.sendMail(mailOptions);
+
+            console.log('📧 Withdrawal notification email sent successfully:', result.messageId);
             return true;
         } catch (error) {
             console.error('❌ Failed to send withdrawal notification email:', error);
@@ -215,15 +249,17 @@ export class EmailService {
             const randomNumber = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
             const subject = `Flyvixx - New Referral ${randomNumber}`;
 
-            const result = await resend.emails.send({
-                from: 'Flyvixx <noreply@mail.flyvixx.com>',
-                to: [referrerEmail],
+            const mailOptions = {
+                from: `${process.env.AWS_SES_FROM_NAME} <${process.env.AWS_SES_FROM_EMAIL}>`,
+                to: referrerEmail,
                 subject: subject,
                 html: htmlContent,
                 text: textContent,
-            });
+            };
 
-            console.log('📧 Referral notification email sent successfully:', result);
+            const result = await transporter.sendMail(mailOptions);
+
+            console.log('📧 Referral notification email sent successfully:', result.messageId);
             return true;
         } catch (error) {
             console.error('❌ Failed to send referral notification email:', error);
@@ -236,23 +272,23 @@ export class EmailService {
      */
     public async sendEmail(options: EmailOptions): Promise<boolean> {
         try {
-            const emailData: any = {
-                from: 'Flyvixx <noreply@mail.flyvixx.com>',
-                to: [options.to],
+            const mailOptions: any = {
+                from: `${process.env.AWS_SES_FROM_NAME} <${process.env.AWS_SES_FROM_EMAIL}>`,
+                to: options.to,
                 subject: options.subject,
             };
 
             if (options.html) {
-                emailData.html = options.html;
+                mailOptions.html = options.html;
             }
 
             if (options.text) {
-                emailData.text = options.text;
+                mailOptions.text = options.text;
             }
 
-            const result = await resend.emails.send(emailData);
+            const result = await transporter.sendMail(mailOptions);
 
-            console.log('📧 Email sent successfully:', result);
+            console.log('📧 Email sent successfully:', result.messageId);
             return true;
         } catch (error) {
             console.error('❌ Failed to send email:', error);
