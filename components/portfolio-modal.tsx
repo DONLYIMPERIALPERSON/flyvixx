@@ -66,7 +66,7 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
 
     // Start timer when data becomes available (only once per modal session)
     useEffect(() => {
-        if (isOpen && userData?.dailyGifts !== undefined && !timerStartedRef.current) {
+        if (isOpen && portfolioInfo?.hasLockedFunds && !timerStartedRef.current) {
             console.log('🎯 Starting live countdown timer');
             timerStartedRef.current = true;
 
@@ -78,7 +78,7 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
                 calculateGiftTimer();
             }, 1000);
         }
-    }, [isOpen, userData?.dailyGifts]); // Start when data becomes available
+    }, [isOpen, portfolioInfo?.hasLockedFunds]); // Start when locked funds data becomes available
 
     // Reset timer flag when modal closes
     useEffect(() => {
@@ -195,7 +195,8 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
 
 
     const calculateGiftTimer = () => {
-        if (!userData?.dailyGifts) return;
+        // Always calculate timer for users with locked funds, even if they have no gifts left
+        if (!portfolioInfo?.hasLockedFunds) return;
 
         const now = new Date();
         // Calculate next midnight (when gifts reset)
@@ -208,18 +209,18 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
         const secondsUntilReset = Math.floor((timeUntilReset % (1000 * 60)) / 1000);
 
         // Check if gifts were given today (within last 24 hours)
-        const giftsGivenToday = userData.dailyGifts > 0;
+        const giftsGivenToday = (userData?.dailyGifts || 0) > 0;
 
         console.log('🎁 Gift timer calculated:', {
             now: now.toISOString(),
             nextMidnight: nextMidnight.toISOString(),
             timeUntilReset,
             countdown: `${hoursUntilReset}:${minutesUntilReset}:${secondsUntilReset}`,
-            dailyGifts: userData.dailyGifts
+            dailyGifts: userData?.dailyGifts || 0
         });
 
         setGiftInfo({
-            dailyGifts: userData.dailyGifts,
+            dailyGifts: userData?.dailyGifts || 0,
             giftsLastReset: null, // We don't have this from the API yet
             nextResetTime: nextMidnight.toISOString(),
             hoursUntilReset,
