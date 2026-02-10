@@ -53,19 +53,29 @@ async function resetDailyGiftsForLockedUsers() {
 
     for (const user of eligibleUsers) {
       try {
-        // Calculate fresh daily gifts based on current level (level 1 = 2 gifts, level 2 = 4 gifts, etc.)
-        const freshGifts = user.level * 2;
+        // Check if gifts were already reset today (within last 24 hours)
+        const now = new Date();
+        const lastReset = user.giftsLastReset ? new Date(user.giftsLastReset) : null;
+        const hoursSinceLastReset = lastReset ? (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60) : 25;
 
-        // Replace existing gifts with fresh daily amount (old unused gifts disappear)
-        user.dailyGifts = freshGifts;
-        user.giftsLastReset = new Date();
+        // Only reset if it's been more than 24 hours since last reset
+        if (hoursSinceLastReset >= 24) {
+          // Calculate fresh daily gifts based on current level (level 1 = 2 gifts, level 2 = 4 gifts, etc.)
+          const freshGifts = user.level * 2;
 
-        await userRepository.save(user);
+          // Replace existing gifts with fresh daily amount (old unused gifts disappear)
+          user.dailyGifts = freshGifts;
+          user.giftsLastReset = new Date();
 
-        resetCount++;
-        totalGiftsGiven += freshGifts;
+          await userRepository.save(user);
 
-        logger.info(`✅ Daily gift reset for user ${user.id} (${user.email}): ${freshGifts} fresh gifts (level ${user.level})`);
+          resetCount++;
+          totalGiftsGiven += freshGifts;
+
+          logger.info(`✅ Daily gift reset for user ${user.id} (${user.email}): ${freshGifts} fresh gifts (level ${user.level})`);
+        } else {
+          logger.info(`⏰ Skipping user ${user.id} - gifts already reset ${hoursSinceLastReset.toFixed(1)} hours ago`);
+        }
       } catch (userError) {
         logger.error(`❌ Failed to reset gifts for user ${user.id}:`, userError);
       }
