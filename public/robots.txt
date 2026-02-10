@@ -1,10 +1,7 @@
 User-agent: *
-Disallow: /
+Allow: /
 
-# Only allow crawling of the home page
-Allow: /$
-
-# Block all other pages
+# Block admin and sensitive pages
 Disallow: /admin/
 Disallow: /fly/
 Disallow: /support/
