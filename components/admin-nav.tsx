@@ -6,6 +6,7 @@ import {
     CreditCard,
     ArrowDownCircle,
     TrendingUp,
+    Users,
     LogOut
 } from 'lucide-react';
 
@@ -23,6 +24,12 @@ export default function AdminNav({ onLogout }: AdminNavProps) {
             path: '/admin/dashboard',
             icon: Home,
             active: pathname === '/admin/dashboard'
+        },
+        {
+            label: 'Users',
+            path: '/admin/users',
+            icon: Users,
+            active: pathname === '/admin/users'
         },
         {
             label: 'Deposits',

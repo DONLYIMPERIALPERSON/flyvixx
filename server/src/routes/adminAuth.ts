@@ -7,6 +7,7 @@ import { adminDashboardService } from '../services/adminDashboardService';
 import { adminDepositsService } from '../services/adminDepositsService';
 import { adminWithdrawalsService } from '../services/adminWithdrawalsService';
 import { adminProfitsService } from '../services/adminProfitsService';
+import { adminUsersService } from '../services/adminUsersService';
 import { adminAuthMiddleware, generateAdminToken } from '../middleware/adminAuth';
 
 const router = express.Router();
@@ -341,6 +342,54 @@ router.get('/profits/history', adminAuthMiddleware, async (req, res) => {
     } catch (error) {
         logger.error('Admin cashout history error:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch cashout history' });
+    }
+});
+
+// GET /api/admin/users - Get users with pagination and search
+router.get('/users', adminAuthMiddleware, async (req, res) => {
+    try {
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const searchEmail = req.query.email as string;
+
+        logger.info(`Admin users request - page: ${page}, limit: ${limit}, search: ${searchEmail || 'none'}`);
+
+        const result = await adminUsersService.getUsers(page, limit, searchEmail);
+
+        res.json({
+            success: true,
+            data: result
+        });
+    } catch (error) {
+        logger.error('Admin users error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch users' });
+    }
+});
+
+// GET /api/admin/users/:id - Get user details by ID
+router.get('/users/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const userId = req.params.id;
+
+        if (!userId) {
+            return res.status(400).json({ success: false, error: 'User ID is required' });
+        }
+
+        logger.info(`Admin user details request for: ${userId}`);
+
+        const user = await adminUsersService.getUserById(userId);
+
+        if (!user) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        res.json({
+            success: true,
+            data: user
+        });
+    } catch (error) {
+        logger.error('Admin user details error:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch user details' });
     }
 });
 
