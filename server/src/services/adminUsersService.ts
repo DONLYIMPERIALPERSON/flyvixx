@@ -104,6 +104,7 @@ export class AdminUsersService {
   }>> {
     if (userIds.length === 0) return {};
 
+    const userRepository = AppDataSource.getRepository(User);
     const transactionRepository = AppDataSource.getRepository(Transaction);
 
     // Get deposit sums
@@ -130,8 +131,16 @@ export class AdminUsersService {
       .groupBy('transaction.userId')
       .getRawMany();
 
-    // For now, referral earnings are not implemented, so we'll set to 0
-    // This can be updated when referral system is implemented
+    // Get referral counts - count how many users were referred by each user
+    const referralCounts = await userRepository
+      .createQueryBuilder('user')
+      .select('user.referredBy', 'referrerId')
+      .addSelect('COUNT(*)', 'referralCount')
+      .where('user.referredBy IN (:...userIds)', { userIds })
+      .andWhere('user.status = :status', { status: UserStatus.ACTIVE })
+      .groupBy('user.referredBy')
+      .getRawMany();
+
     const financialData: Record<string, any> = {};
 
     userIds.forEach(userId => {
@@ -151,6 +160,12 @@ export class AdminUsersService {
     withdrawalSums.forEach(sum => {
       if (financialData[sum.userId]) {
         financialData[sum.userId].totalWithdrawal = parseFloat(sum.totalWithdrawal || '0');
+      }
+    });
+
+    referralCounts.forEach(count => {
+      if (financialData[count.referrerId]) {
+        financialData[count.referrerId].totalReferral = parseInt(count.referralCount || '0');
       }
     });
 
