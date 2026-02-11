@@ -9,6 +9,8 @@
     "start": "node dist/index.js",
     "add-admin": "ts-node scripts/add-admin.ts",
     "daily-gift-reset": "ts-node scripts/daily-gift-reset.ts",
+    "update-crypto-rates": "ts-node scripts/update-crypto-rates.ts",
+    "setup-crypto-rates-cron": "./scripts/setup-crypto-rates-cron.sh",
     "simulate-deposit": "ts-node scripts/simulate-deposit.ts",
     "test-daily-gifts": "ts-node scripts/test-daily-gift-system.ts",
     "simulate-day-2": "ts-node scripts/simulate-day-2.ts",
