@@ -40,6 +40,12 @@ export default function AdminWithdrawalsPage() {
     const [totalPages, setTotalPages] = useState(0);
     const [pendingCount, setPendingCount] = useState(0);
     const [approvingId, setApprovingId] = useState<string | null>(null);
+    const [cryptoLoadingId, setCryptoLoadingId] = useState<string | null>(null);
+    const [cryptoModal, setCryptoModal] = useState<{
+        show: boolean;
+        address: string;
+        type: string;
+    }>({ show: false, address: '', type: '' });
     const itemsPerPage = 10;
 
     // Mock data - in a real app, this would come from API calls
@@ -327,12 +333,14 @@ export default function AdminWithdrawalsPage() {
         }
     };
 
-    const handleApprove = async (withdrawalId: string) => {
+    const handleApprove = async (withdrawalId: string, isCrypto: boolean = false) => {
         setApprovingId(withdrawalId);
 
         try {
             const adminToken = localStorage.getItem('adminToken');
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/withdrawals/approve`, {
+            const endpoint = isCrypto ? '/api/admin/withdrawals/approve-crypto' : '/api/admin/withdrawals/approve';
+
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}${endpoint}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -366,6 +374,52 @@ export default function AdminWithdrawalsPage() {
         } finally {
             setApprovingId(null);
         }
+    };
+
+    const handleShowCryptoAddress = async (withdrawalId: string) => {
+        setCryptoLoadingId(withdrawalId);
+
+        try {
+            const adminToken = localStorage.getItem('adminToken');
+            // Get transaction details to show crypto address
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/withdrawals/${withdrawalId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${adminToken}`,
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.cryptoAddress && data.cryptoType) {
+                // Show modal with address
+                setCryptoModal({
+                    show: true,
+                    address: data.cryptoAddress,
+                    type: data.cryptoType
+                });
+            } else {
+                alert('Crypto address not found for this withdrawal');
+            }
+        } catch (error) {
+            console.error('Error fetching crypto address:', error);
+            alert('Error fetching crypto address. Please try again.');
+        } finally {
+            setCryptoLoadingId(null);
+        }
+    };
+
+    const handleCopyAddress = async (address: string) => {
+        try {
+            await navigator.clipboard.writeText(address);
+            // Could add a toast notification here instead of alert
+        } catch (error) {
+            console.error('Failed to copy address:', error);
+        }
+    };
+
+    const closeCryptoModal = () => {
+        setCryptoModal({ show: false, address: '', type: '' });
     };
 
     const getStateColor = (state: string) => {
@@ -502,10 +556,28 @@ export default function AdminWithdrawalsPage() {
                                                 {getStateText(withdrawal.state)}
                                             </span>
                                         </div>
-                                        <div>
+                                        <div className="flex flex-col space-y-1">
+                                            {/* Show crypto address button for both pending and approved crypto withdrawals */}
+                                            {(withdrawal.payoutDetails.includes('BTC Wallet') || withdrawal.payoutDetails.includes('USDT Wallet')) && (
+                                                <button
+                                                    onClick={() => handleShowCryptoAddress(withdrawal.id)}
+                                                    disabled={cryptoLoadingId === withdrawal.id}
+                                                    className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-2 py-1 rounded text-xs font-medium border border-blue-500/30 hover:border-blue-400/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
+                                                    title="Click to view crypto address"
+                                                >
+                                                    {cryptoLoadingId === withdrawal.id ? (
+                                                        <>
+                                                            <div className="animate-spin rounded-full h-2 w-2 border border-blue-300/50 border-t-blue-300"></div>
+                                                            <span>Loading...</span>
+                                                        </>
+                                                    ) : (
+                                                        <span>{withdrawal.payoutDetails.includes('BTC Wallet') ? 'BTC' : 'USDT'}</span>
+                                                    )}
+                                                </button>
+                                            )}
                                             {withdrawal.state === 'waiting_for_admin_approval' && (
                                                 <button
-                                                    onClick={() => handleApprove(withdrawal.id)}
+                                                    onClick={() => handleApprove(withdrawal.id, withdrawal.payoutDetails.includes('BTC Wallet') || withdrawal.payoutDetails.includes('USDT Wallet'))}
                                                     disabled={approvingId === withdrawal.id}
                                                     className="bg-[#FFD700] text-[#004B49] px-3 py-1 rounded-lg text-xs font-bold hover:bg-[#E6C200] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1"
                                                 >
@@ -560,6 +632,58 @@ export default function AdminWithdrawalsPage() {
                                 <span>Next</span>
                                 <ChevronRight size={16} />
                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Crypto Address Modal */}
+                {cryptoModal.show && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                        <div className="bg-white rounded-xl max-w-md w-full p-6 border border-gray-200">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-gray-900">
+                                    {cryptoModal.type.toUpperCase()} Address
+                                </h3>
+                                <button
+                                    onClick={closeCryptoModal}
+                                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Wallet Address
+                                    </label>
+                                    <div className="relative">
+                                        <textarea
+                                            value={cryptoModal.address}
+                                            readOnly
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 font-mono text-sm resize-none"
+                                            rows={3}
+                                        />
+                                        <button
+                                            onClick={() => handleCopyAddress(cryptoModal.address)}
+                                            className="absolute top-2 right-2 bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
+                                        >
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="flex justify-end space-x-3">
+                                    <button
+                                        onClick={closeCryptoModal}
+                                        className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

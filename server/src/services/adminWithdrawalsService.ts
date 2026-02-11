@@ -56,11 +56,13 @@ export class AdminWithdrawalsService {
       // Get total count for pagination
       const totalCount = await queryBuilder.getCount();
 
-      // Get count of pending approvals
+      // Get count of pending approvals (both bank and crypto)
       const pendingCount = await transactionRepository
         .createQueryBuilder('transaction')
         .where('transaction.type = :type', { type: TransactionType.WITHDRAWAL })
-        .andWhere('transaction.status = :status', { status: TransactionStatus.PENDING_APPROVAL })
+        .andWhere('transaction.status IN (:...statuses)', {
+          statuses: [TransactionStatus.PENDING_APPROVAL, TransactionStatus.PENDING]
+        })
         .getCount();
 
       // Apply pagination
@@ -77,7 +79,8 @@ export class AdminWithdrawalsService {
       // Transform to withdrawal records
       const withdrawals: WithdrawalRecord[] = transactions.map(transaction => {
         const userStat = userStats[transaction.userId];
-        return {
+        const payoutDetails = this.formatPayoutDetails(transaction.user.payoutDetails);
+        const withdrawalRecord = {
           id: transaction.id,
           email: transaction.user.email,
           amount: parseFloat(transaction.amount.toString()),
@@ -86,10 +89,14 @@ export class AdminWithdrawalsService {
           totalReferral: userStat?.totalReferral || 0,
           type: this.mapTransactionType(transaction),
           state: this.mapTransactionState(transaction.status, transaction),
-          payoutDetails: this.formatPayoutDetails(transaction.user.payoutDetails),
+          payoutDetails: payoutDetails,
           dateTime: transaction.createdAt.toISOString().slice(0, 19).replace('T', ' '),
           transactionId: transaction.id
         };
+
+
+
+        return withdrawalRecord;
       });
 
       const totalPages = Math.ceil(totalCount / limit);
@@ -173,6 +180,12 @@ export class AdminWithdrawalsService {
 
   // Map TransactionStatus to withdrawal type
   private mapTransactionType(transaction: Transaction): 'auto' | 'admin' {
+    // Check if it's a crypto withdrawal (always requires admin approval)
+    const metadata = transaction.metadata || {};
+    if (metadata.method === 'btc' || metadata.method === 'usdt') {
+      return 'admin'; // Crypto withdrawals always require admin approval
+    }
+
     // If it was auto-processed (completed without admin approval)
     if (transaction.status === TransactionStatus.COMPLETED &&
         !transaction.metadata?.requiresApproval) {
@@ -209,7 +222,12 @@ export class AdminWithdrawalsService {
         return 'approved_by_admin';
 
       case TransactionStatus.PENDING:
-        // If approved and now being processed
+        // Check if it's a crypto withdrawal waiting for admin approval
+        const metadata = transaction?.metadata || {};
+        if (metadata.method === 'btc' || metadata.method === 'usdt') {
+          return 'waiting_for_admin_approval';
+        }
+        // Otherwise it was approved and now being processed
         return 'approved_by_admin';
 
       case TransactionStatus.FAILED:
@@ -239,6 +257,99 @@ export class AdminWithdrawalsService {
     }
 
     return 'Unknown payout method';
+  }
+
+  // Approve a crypto withdrawal
+  async approveCryptoWithdrawal(transactionId: string, adminId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      logger.info(`Starting crypto withdrawal approval for transaction: ${transactionId}, admin: ${adminId}`);
+
+      const transactionRepository = AppDataSource.getRepository(Transaction);
+      const adminRepository = AppDataSource.getRepository(Admin);
+
+      // Get the transaction with user
+      const transaction = await transactionRepository.findOne({
+        where: { id: transactionId },
+        relations: ['user']
+      });
+
+      logger.info(`Transaction lookup result: ${transaction ? 'found' : 'not found'}`);
+      if (transaction) {
+        logger.info(`Transaction status: ${transaction.status}, type: ${transaction.type}, metadata: ${JSON.stringify(transaction.metadata)}`);
+      }
+
+      if (!transaction) {
+        logger.error(`Transaction not found: ${transactionId}`);
+        return { success: false, message: 'Transaction not found' };
+      }
+
+      if (transaction.status !== TransactionStatus.PENDING) {
+        logger.error(`Transaction status is not PENDING. Current status: ${transaction.status}, expected: ${TransactionStatus.PENDING}`);
+        return { success: false, message: `Transaction is not pending approval (current status: ${transaction.status})` };
+      }
+
+      // Check if it's a crypto withdrawal
+      const metadata = transaction.metadata || {};
+      if (metadata.method !== 'btc' && metadata.method !== 'usdt') {
+        return { success: false, message: 'This method only handles crypto withdrawals' };
+      }
+
+      // Check if admin exists
+      const admin = await adminRepository.findOne({
+        where: { id: adminId, status: AdminStatus.ACTIVE }
+      });
+      if (!admin) {
+        return { success: false, message: 'Admin access required' };
+      }
+
+      const withdrawalUser = transaction.user;
+
+      // Update transaction status to COMPLETED
+      transaction.status = TransactionStatus.COMPLETED;
+      transaction.description = `Crypto withdrawal via ${metadata.method.toUpperCase()} (Admin Approved)`;
+      transaction.metadata = {
+        ...transaction.metadata,
+        approvedBy: adminId,
+        approvedAt: new Date().toISOString()
+      };
+
+      await transactionRepository.save(transaction);
+
+      logger.info(`Crypto withdrawal approved: Transaction ${transactionId} by admin ${adminId}`);
+
+      // Send withdrawal notification email to user
+      try {
+        const amountValue = Number(transaction.amount);
+        const emailSent = await emailService.sendWithdrawalEmail(withdrawalUser.email, amountValue.toFixed(2));
+        if (emailSent) {
+          logger.info(`Crypto withdrawal success email sent to ${withdrawalUser.email} for admin approved withdrawal`);
+        } else {
+          logger.warn(`Crypto withdrawal success email failed to send to ${withdrawalUser.email} for admin approved withdrawal`);
+        }
+      } catch (emailError) {
+        logger.error('Failed to send crypto withdrawal success email:', emailError);
+        // Don't fail the approval if email fails
+      }
+
+      // Create withdrawal notification
+      try {
+        const amountValue = Number(transaction.amount);
+        const notification = await NotificationService.createWithdrawalNotification(withdrawalUser.id, amountValue);
+        logger.info(`✅ Crypto withdrawal notification created for user ${withdrawalUser.id}: ${notification.id}`);
+      } catch (notificationError) {
+        logger.error('❌ Failed to create crypto withdrawal notification:', notificationError);
+        // Don't fail the withdrawal if notification creation fails
+      }
+
+      return {
+        success: true,
+        message: 'Crypto withdrawal approved and completed successfully'
+      };
+
+    } catch (error) {
+      logger.error('Error approving crypto withdrawal:', error);
+      return { success: false, message: 'Failed to approve crypto withdrawal' };
+    }
   }
 
   // Approve a withdrawal

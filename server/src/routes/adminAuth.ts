@@ -3,6 +3,7 @@ import { logger } from '../utils/logger';
 import { emailService } from '../utils/emailService';
 import { AppDataSource } from '../config/database';
 import { Admin, AdminStatus } from '../models/Admin';
+import { Transaction, TransactionType } from '../models/Transaction';
 import { adminDashboardService } from '../services/adminDashboardService';
 import { adminDepositsService } from '../services/adminDepositsService';
 import { adminWithdrawalsService } from '../services/adminWithdrawalsService';
@@ -220,6 +221,72 @@ router.get('/deposits', adminAuthMiddleware, async (req, res) => {
     }
 });
 
+// POST /api/admin/deposits/:id/approve - Approve a deposit
+router.post('/deposits/:id/approve', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({ success: false, error: 'Deposit ID is required' });
+        }
+
+        // Get admin ID from authenticated admin
+        const adminId = req.admin!.id;
+
+        logger.info(`Admin deposit approval request: ${id} by ${req.admin!.email} (${adminId})`);
+
+        const result = await adminDepositsService.approveDeposit(id, adminId);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: result.message
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: result.message
+            });
+        }
+    } catch (error) {
+        logger.error('Admin deposit approval error:', error);
+        res.status(500).json({ success: false, error: 'Failed to approve deposit' });
+    }
+});
+
+// POST /api/admin/deposits/:id/decline - Decline a deposit
+router.post('/deposits/:id/decline', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({ success: false, error: 'Deposit ID is required' });
+        }
+
+        // Get admin ID from authenticated admin
+        const adminId = req.admin!.id;
+
+        logger.info(`Admin deposit decline request: ${id} by ${req.admin!.email} (${adminId})`);
+
+        const result = await adminDepositsService.declineDeposit(id, adminId);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: result.message
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: result.message
+            });
+        }
+    } catch (error) {
+        logger.error('Admin deposit decline error:', error);
+        res.status(500).json({ success: false, error: 'Failed to decline deposit' });
+    }
+});
+
 // GET /api/admin/withdrawals - Get withdrawals with pagination and search
 router.get('/withdrawals', adminAuthMiddleware, async (req, res) => {
     try {
@@ -239,6 +306,53 @@ router.get('/withdrawals', adminAuthMiddleware, async (req, res) => {
         logger.error('Admin withdrawals error:', error);
         res.status(500).json({ success: false, error: 'Failed to fetch withdrawals' });
     }
+});
+
+// GET /api/admin/withdrawals/:id - Get withdrawal details by ID
+router.get('/withdrawals/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    const transactionId = req.params.id;
+
+    if (!transactionId) {
+      return res.status(400).json({ success: false, error: 'Transaction ID is required' });
+    }
+
+    const transactionRepository = AppDataSource.getRepository(Transaction);
+    const transaction = await transactionRepository.findOne({
+      where: { id: transactionId },
+      relations: ['user']
+    });
+
+    if (!transaction) {
+      return res.status(404).json({ success: false, error: 'Transaction not found' });
+    }
+
+    // Check if it's a withdrawal
+    if (transaction.type !== TransactionType.WITHDRAWAL) {
+      return res.status(400).json({ success: false, error: 'Transaction is not a withdrawal' });
+    }
+
+    // Get crypto address and type from metadata if it's a crypto withdrawal
+    const metadata = transaction.metadata || {};
+    const cryptoAddress = metadata.cryptoAddress;
+    const cryptoType = metadata.method;
+
+    res.json({
+      success: true,
+      cryptoAddress: cryptoAddress || null,
+      cryptoType: cryptoType || null,
+      transaction: {
+        id: transaction.id,
+        amount: Number(transaction.amount),
+        method: metadata.method,
+        status: transaction.status,
+        userEmail: transaction.user.email
+      }
+    });
+  } catch (error) {
+    logger.error('Admin withdrawal details error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch withdrawal details' });
+  }
 });
 
 // POST /api/admin/withdrawals/approve - Approve a withdrawal
@@ -271,6 +385,39 @@ router.post('/withdrawals/approve', adminAuthMiddleware, async (req, res) => {
     } catch (error) {
         logger.error('Admin withdrawal approval error:', error);
         res.status(500).json({ success: false, error: 'Failed to approve withdrawal' });
+    }
+});
+
+// POST /api/admin/withdrawals/approve-crypto - Approve a crypto withdrawal
+router.post('/withdrawals/approve-crypto', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { transactionId } = req.body;
+
+        if (!transactionId) {
+            return res.status(400).json({ success: false, error: 'Transaction ID is required' });
+        }
+
+        // Get admin ID from authenticated admin
+        const adminId = req.admin!.id;
+
+        logger.info(`Admin crypto withdrawal approval request: ${transactionId} by ${req.admin!.email} (${adminId})`);
+
+        const result = await adminWithdrawalsService.approveCryptoWithdrawal(transactionId, adminId);
+
+        if (result.success) {
+            res.json({
+                success: true,
+                message: result.message
+            });
+        } else {
+            res.status(400).json({
+                success: false,
+                error: result.message
+            });
+        }
+    } catch (error) {
+        logger.error('Admin crypto withdrawal approval error:', error);
+        res.status(500).json({ success: false, error: 'Failed to approve crypto withdrawal' });
     }
 });
 
