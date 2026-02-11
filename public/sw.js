@@ -1,7 +1,7 @@
 // Service Worker for FLYVIXX PWA
-const CACHE_NAME = 'flyvixx-v1.0.0';
-const STATIC_CACHE = 'flyvixx-static-v1.0.0';
-const DYNAMIC_CACHE = 'flyvixx-dynamic-v1.0.0';
+const CACHE_NAME = 'flyvixx-v1.0.1';
+const STATIC_CACHE = 'flyvixx-static-v1.0.1';
+const DYNAMIC_CACHE = 'flyvixx-dynamic-v1.0.1';
 
 // Files to cache immediately
 const STATIC_ASSETS = [
@@ -25,7 +25,16 @@ self.addEventListener('install', (event) => {
         caches.open(STATIC_CACHE)
             .then((cache) => {
                 console.log('Service Worker: Caching static assets');
-                return cache.addAll(STATIC_ASSETS);
+                // Cache assets individually to handle failures gracefully
+                return Promise.allSettled(
+                    STATIC_ASSETS.map(url =>
+                        cache.add(url).catch(error => {
+                            console.warn(`Service Worker: Failed to cache ${url}:`, error);
+                            // Don't fail the entire installation for one asset
+                            return Promise.resolve();
+                        })
+                    )
+                );
             })
             .then(() => {
                 return self.skipWaiting();
@@ -63,20 +72,36 @@ self.addEventListener('fetch', (event) => {
     // Skip external requests
     if (!url.origin.includes(self.location.origin)) return;
 
-    // Handle API requests differently
+    // Handle API requests differently - don't cache authenticated requests
     if (url.pathname.startsWith('/api/')) {
+        // Skip caching for authenticated requests or sensitive endpoints
+        const shouldSkipCache = request.headers.get('authorization') ||
+                                url.pathname.includes('/user/') ||
+                                url.pathname.includes('/admin/') ||
+                                url.pathname.includes('/auth/');
+
+        if (shouldSkipCache) {
+            // Just fetch without caching
+            event.respondWith(fetch(request));
+            return;
+        }
+
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    // Cache successful API responses
+                    // Cache successful API responses for public endpoints
                     if (response.status === 200) {
                         const responseClone = response.clone();
                         caches.open(DYNAMIC_CACHE)
-                            .then((cache) => cache.put(request, responseClone));
+                            .then((cache) => cache.put(request, responseClone))
+                            .catch((error) => {
+                                console.warn('Service Worker: Failed to cache API response:', error);
+                            });
                     }
                     return response;
                 })
-                .catch(() => {
+                .catch((error) => {
+                    console.warn('Service Worker: API request failed:', error);
                     // Return cached API response if available
                     return caches.match(request);
                 })

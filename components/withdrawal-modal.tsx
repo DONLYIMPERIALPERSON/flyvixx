@@ -161,16 +161,20 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
             console.log('💰 Withdrawal amount:', withdrawalAmount);
             console.log('🏦 Withdrawal method:', activeTab);
 
-            // Prepare request body - backend now handles fresh name enquiry automatically
+            // Use different endpoints based on withdrawal method
+            const isCrypto = activeTab === 'btc' || activeTab === 'usdt';
+            const endpoint = isCrypto ? '/api/transactions/withdraw' : '/api/safehaven/transfer';
+
+            // Prepare request body
             const requestBody = {
                 amount: parseFloat(withdrawalAmount),
                 method: activeTab
             };
 
             console.log('📦 Request body:', requestBody);
-            console.log('🌐 Full API URL:', `${apiBaseUrl}/api/safehaven/transfer`);
+            console.log('🌐 Full API URL:', `${apiBaseUrl}${endpoint}`);
 
-            const response = await fetch(`${apiBaseUrl}/api/safehaven/transfer`, {
+            const response = await fetch(`${apiBaseUrl}${endpoint}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -188,7 +192,10 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
 
             if (data.success) {
                 console.log('✅ Withdrawal successful!');
-                showSuccess(`Withdrawal of $${withdrawalAmount} via ${currentMethod.label} initiated successfully!`);
+                const successMessage = isCrypto
+                    ? `Crypto withdrawal request submitted! Your funds will be sent after admin approval.`
+                    : `Withdrawal of $${withdrawalAmount} via ${currentMethod.label} initiated successfully!`;
+                showSuccess(successMessage);
                 return true;
             } else {
                 console.error('❌ Withdrawal failed with error:', data.error);
@@ -342,26 +349,107 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
                             </p>
                         </div>
                     ) : activeTab === 'btc' || activeTab === 'usdt' ? (
-                        /* Crypto Withdrawals Not Available */
-                        <div className="space-y-4">
-                            <div className="text-center">
-                                <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${activeTab === 'btc' ? 'bg-orange-500' : 'bg-green-500'}`}>
-                                    <span className="text-2xl font-bold text-white">
-                                        {activeTab === 'btc' ? '₿' : '₮'}
+                        /* Crypto Withdrawals - Follow bank transfer pattern */
+                        currentMethod.isSet ? (
+                            /* Method is set - show withdrawal form */
+                            <div className="space-y-4">
+                                {/* Method Status */}
+                                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span className="text-sm font-medium text-gray-700">Method Status:</span>
+                                    <span className="text-xs px-2 py-1 rounded-full font-medium bg-green-100 text-green-800">
+                                        METHOD SET
                                     </span>
                                 </div>
-                                <h4 className="text-lg font-semibold text-gray-900 mb-2">{currentMethod.label} Withdrawals</h4>
-                                <p className="text-sm text-gray-600 mb-4">
-                                    Currently not available
-                                </p>
-                            </div>
 
-                            <div className="bg-gray-50 p-6 rounded-lg text-center">
-                                <p className="text-sm text-gray-700">
-                                    {currentMethod.label} withdrawals are temporarily unavailable. Please use Bank Transfer for withdrawals at this time.
-                                </p>
+                                {/* Amount Input */}
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Withdrawal Amount ($)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        placeholder={`Min. $${currentMethod.minAmount}`}
+                                        value={withdrawalAmount}
+                                        onChange={(e) => setWithdrawalAmount(e.target.value)}
+                                        className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004B49] focus:border-transparent text-black"
+                                        style={{ fontSize: '16px' }}
+                                        min={currentMethod.minAmount}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Minimum withdrawal: ${currentMethod.minAmount}
+                                    </p>
+                                </div>
+
+                                {/* Charge Display */}
+                                <div className="p-3 bg-blue-50 rounded-lg">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm font-medium text-blue-800">Withdrawal Charge:</span>
+                                        <span className="text-sm font-bold text-blue-800">${currentMethod.charge}</span>
+                                    </div>
+                                </div>
+
+                                {/* Method Details */}
+                                {payoutDetails && (
+                                    <div className="bg-gray-50 p-4 rounded-lg">
+                                        <h5 className="text-sm font-medium text-gray-700 mb-2">Withdrawal Details:</h5>
+                                        {activeTab === 'btc' && payoutDetails.btc?.btcAddress && (
+                                            <p className="text-sm font-mono text-black break-all">{payoutDetails.btc.btcAddress}</p>
+                                        )}
+                                        {activeTab === 'usdt' && payoutDetails.usdt?.usdtAddress && (
+                                            <p className="text-sm font-mono text-black break-all">{payoutDetails.usdt.usdtAddress}</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Withdraw Button */}
+                                <button
+                                    onClick={handleWithdraw}
+                                    disabled={!withdrawalAmount || parseFloat(withdrawalAmount) < currentMethod.minAmount || isSendingOtp}
+                                    className="w-full bg-[#004B49] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                                >
+                                    {isSendingOtp ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin mr-2" />
+                                            Sending OTP...
+                                        </>
+                                    ) : (
+                                        'Withdraw Funds'
+                                    )}
+                                </button>
+
+                                {/* Crypto Warning */}
+                                <div className="bg-yellow-50 p-4 rounded-lg">
+                                    <div className="flex items-start space-x-2">
+                                        <AlertTriangle size={16} className="text-yellow-600 mt-0.5 flex-shrink-0" />
+                                        <div>
+                                            <p className="text-sm text-yellow-800 font-medium">Important:</p>
+                                            <p className="text-sm text-yellow-700 mt-1">
+                                                Crypto withdrawals may take up to 24 hours. You must have deposited via the same crypto method previously.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            /* Method not set - show configuration warning (same as bank transfer) */
+                            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                                <AlertCircle size={64} className="text-gray-400" />
+                                <div className="text-center">
+                                    <h4 className="text-lg font-semibold text-gray-900 mb-2">{currentMethod.label} Not Configured</h4>
+                                    <p className="text-sm text-gray-600 mb-4">
+                                        You need to add your {currentMethod.label.toLowerCase()} wallet address in your profile before you can withdraw using this method.
+                                    </p>
+                                    <button
+                                        onClick={() => {
+                                            showInfo('Please go to Profile > Payout Details to add your crypto wallet addresses.');
+                                        }}
+                                        className="bg-[#004B49] text-white py-2 px-4 rounded-lg font-medium hover:bg-[#00695C] transition-colors"
+                                    >
+                                        Go to Payout Details
+                                    </button>
+                                </div>
+                            </div>
+                        )
                     ) : !currentMethod.isSet ? (
                         /* Method Not Set Warning */
                         <div className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -426,17 +514,11 @@ export default function WithdrawalModal({ isOpen, onClose }: WithdrawalModalProp
                             {currentMethod.isSet && payoutDetails && (
                                 <div className="bg-gray-50 p-4 rounded-lg">
                                     <h5 className="text-sm font-medium text-gray-700 mb-2">Withdrawal Details:</h5>
-                                    {activeTab === 'btc' && (payoutDetails as any).btc?.btcAddress && (
-                                        <p className="text-sm font-mono text-black break-all">{(payoutDetails as any).btc.btcAddress}</p>
-                                    )}
-                                    {activeTab === 'usdt' && (payoutDetails as any).usdt?.usdtAddress && (
-                                        <p className="text-sm font-mono text-black break-all">{(payoutDetails as any).usdt.usdtAddress}</p>
-                                    )}
-                                    {activeTab === 'bank' && (payoutDetails as any).bank && (
+                                    {activeTab === 'bank' && payoutDetails.bank && (
                                         <div className="space-y-1 text-sm text-black">
-                                            <p><span className="font-medium">Account:</span> {(payoutDetails as any).bank.accountName}</p>
-                                            <p><span className="font-medium">Number:</span> {(payoutDetails as any).bank.accountNumber}</p>
-                                            <p><span className="font-medium">Bank:</span> {(payoutDetails as any).bank.bankName}</p>
+                                            <p><span className="font-medium">Account:</span> {payoutDetails.bank.accountName}</p>
+                                            <p><span className="font-medium">Number:</span> {payoutDetails.bank.accountNumber}</p>
+                                            <p><span className="font-medium">Bank:</span> {payoutDetails.bank.bankName}</p>
                                         </div>
                                     )}
                                 </div>

@@ -46,6 +46,7 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
     const [giftInfo, setGiftInfo] = useState<GiftInfo | null>(null);
     const timerStartedRef = useRef(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const userDataRef = useRef(userData);
 
     // Fetch fresh portfolio data when modal opens
     useEffect(() => {
@@ -64,7 +65,12 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
         }
     }, [initialPortfolioInfo, initialUserData]);
 
-    // Start timer when data becomes available (only once per modal session)
+    // Keep ref in sync with userData state
+    useEffect(() => {
+        userDataRef.current = userData;
+    }, [userData]);
+
+    // Start timer when modal opens and user has locked funds (only once per modal session)
     useEffect(() => {
         if (isOpen && portfolioInfo?.hasLockedFunds && !timerStartedRef.current) {
             console.log('🎯 Starting live countdown timer');
@@ -78,7 +84,7 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
                 calculateGiftTimer();
             }, 1000);
         }
-    }, [isOpen, portfolioInfo?.hasLockedFunds]); // Start when locked funds data becomes available
+    }, [isOpen, portfolioInfo?.hasLockedFunds]); // Only depend on modal open and locked funds
 
     // Reset timer flag when modal closes
     useEffect(() => {
@@ -208,19 +214,22 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
         const minutesUntilReset = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
         const secondsUntilReset = Math.floor((timeUntilReset % (1000 * 60)) / 1000);
 
+        // Use ref to get current userData (avoids stale closure in setInterval)
+        const currentUserData = userDataRef.current;
+
         // Check if gifts were given today (within last 24 hours)
-        const giftsGivenToday = (userData?.dailyGifts || 0) > 0;
+        const giftsGivenToday = (currentUserData?.dailyGifts || 0) > 0;
 
         console.log('🎁 Gift timer calculated:', {
             now: now.toISOString(),
             nextMidnight: nextMidnight.toISOString(),
             timeUntilReset,
             countdown: `${hoursUntilReset}:${minutesUntilReset}:${secondsUntilReset}`,
-            dailyGifts: userData?.dailyGifts || 0
+            dailyGifts: currentUserData?.dailyGifts || 0
         });
 
         setGiftInfo({
-            dailyGifts: userData?.dailyGifts || 0,
+            dailyGifts: currentUserData?.dailyGifts || 0,
             giftsLastReset: null, // We don't have this from the API yet
             nextResetTime: nextMidnight.toISOString(),
             hoursUntilReset,
@@ -265,12 +274,14 @@ function PortfolioModal({ isOpen, onClose, portfolioInfo: initialPortfolioInfo, 
                                     <p className="text-xs opacity-80">Gaming Portfolio</p>
                                 </div>
                             </div>
-                            <button
-                                onClick={handleShare}
-                                className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
-                            >
-                                <Share2 size={16} />
-                            </button>
+                            <div className="flex items-center space-x-2">
+                                <button
+                                    onClick={handleShare}
+                                    className="p-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                                >
+                                    <Share2 size={16} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Aircraft Info */}

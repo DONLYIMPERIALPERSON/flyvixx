@@ -11,6 +11,7 @@ import LoginGuard from "../../components/login-guard";
 import { gameStateManager } from "../../components/game-state-manager";
 import { useGameSocket } from "../../hooks/useGameSocket";
 import { useToast } from "../../components/toast-notification";
+import { useBalance } from "../../components/balance-context";
 
 // Import BetType dynamically to avoid SSR issues
 let BetType: any = { CASH: 'cash', PORTFOLIO: 'portfolio' };
@@ -51,9 +52,22 @@ export default function FlyPage() {
     const [userId, setUserId] = useState<string | null>(null);
     const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
-    // Balances with state management - no mock data
-    const [cashBalance, setCashBalance] = useState<number | null>(null);
-    const [portfolioBalance, setPortfolioBalance] = useState<number | null>(null);
+    // Use balance context for real-time balance updates
+    const { balance: contextBalance, setupSocketListener, updateBalance } = useBalance();
+
+    // Local balance state for optimistic updates
+    const [localCashBalance, setLocalCashBalance] = useState<number | null>(null);
+    const [localPortfolioBalance, setLocalPortfolioBalance] = useState<number | null>(null);
+
+    // Sync local state with context
+    useEffect(() => {
+        setLocalCashBalance(contextBalance.cash);
+        setLocalPortfolioBalance(contextBalance.portfolio);
+    }, [contextBalance.cash, contextBalance.portfolio]);
+
+    // Use local state for display, fallback to context
+    const cashBalance = localCashBalance !== null ? localCashBalance : contextBalance.cash;
+    const portfolioBalance = localPortfolioBalance !== null ? localPortfolioBalance : contextBalance.portfolio;
     const portfolioFlightAmount = portfolioBalance ? (portfolioBalance * 0.01).toFixed(2) : '0.00'; // 1% of portfolio
 
     // Portfolio data
@@ -129,8 +143,6 @@ export default function FlyPage() {
                     };
 
                     setUserId(data.user.id);
-                    setCashBalance(parseBalance(data.user.balance.cash));
-                    setPortfolioBalance(parseBalance(data.user.balance.portfolio));
 
                     // Load portfolio data
                     setUserLevel(data.user.level || 1);
@@ -198,19 +210,15 @@ export default function FlyPage() {
         return unsubscribe;
     }, [gamePhase]);
 
-    // Listen for real-time balance updates
+    // Set up socket listener for real-time balance updates
     useEffect(() => {
-        if (onBalanceUpdate) {
-            const unsubscribe = onBalanceUpdate((data) => {
-                console.log('💰 Real-time balance update:', data);
-                setCashBalance(data.cashBalance);
-                setPortfolioBalance(data.portfolioBalance);
+        if (setupSocketListener) {
+            const cleanup = setupSocketListener((data) => {
+                console.log('💰 Fly page received balance update via context:', data);
             });
-            return () => {
-                if (unsubscribe) unsubscribe();
-            };
+            return cleanup;
         }
-    }, [onBalanceUpdate]);
+    }, [setupSocketListener]);
 
     // Listen for cashout events (including auto-cashouts)
     useEffect(() => {
@@ -221,6 +229,13 @@ export default function FlyPage() {
                 // Use the exact data from server
                 const payout = data.payout;
                 const multiplier = data.multiplier;
+
+                // Optimistic UI update: immediately add payout to displayed balance
+                if (betWallet === 'cash') {
+                    setLocalCashBalance(prev => prev !== null ? prev + payout : null);
+                } else if (betWallet === 'portfolio') {
+                    setLocalPortfolioBalance(prev => prev !== null ? prev + payout : null);
+                }
 
                 // Show win animation
                 setWinAmount(payout);
@@ -245,7 +260,7 @@ export default function FlyPage() {
                 setHasActiveBet(false);
                 setBetAmount(0);
 
-                console.log('✅ Cashout processed with correct data:', { payout, multiplier });
+                console.log('✅ Cashout processed with optimistic balance update:', { payout, multiplier });
             };
 
             socket.on('cashed_out', handleCashedOut);
@@ -316,15 +331,26 @@ export default function FlyPage() {
                 // Bet placed successfully
                 setHasActiveBet(true);
                 setBetAmount(amount);
-                setBetWallet('portfolio');
+                setBetWallet(selectedWallet);
 
-                // Reset selected gift (server handles consumption)
-                setSelectedGift(null);
+                // Optimistic UI update: immediately deduct from displayed balance
+                if (selectedWallet === 'cash') {
+                    setLocalCashBalance(prev => prev !== null ? prev - amount : null);
+                } else if (selectedWallet === 'portfolio') {
+                    setLocalPortfolioBalance(prev => prev !== null ? prev - amount : null);
+                }
 
-                // Refresh user profile to update available gifts immediately
-                refreshUserProfile();
+                // Reset selected gift for portfolio flights (server handles consumption)
+                if (selectedWallet === 'portfolio' && selectedGift !== null) {
+                    setSelectedGift(null);
+                }
 
-                console.log('✅ Safe fly bet placed successfully:', amount);
+                // Refresh user profile to update available gifts for portfolio bets
+                if (selectedWallet === 'portfolio') {
+                    refreshUserProfile();
+                }
+
+                console.log('✅ Bet placed successfully with optimistic balance update:', amount, selectedWallet);
             } else {
                 console.error('❌ Safe fly bet placement failed');
                 showError('Failed to place safe fly bet. Please check console for details.');
@@ -385,8 +411,12 @@ export default function FlyPage() {
                 setBetAmount(amount);
                 setBetWallet(selectedWallet);
 
-                // Balances are updated by the server, but we'll update locally for immediate feedback
-                // The server will handle the actual balance updates
+                // Optimistic UI update: immediately deduct from displayed balance
+                if (selectedWallet === 'cash') {
+                    setLocalCashBalance(prev => prev !== null ? prev - amount : null);
+                } else if (selectedWallet === 'portfolio') {
+                    setLocalPortfolioBalance(prev => prev !== null ? prev - amount : null);
+                }
 
                 // Reset selected gift for portfolio flights (server handles consumption)
                 if (selectedWallet === 'portfolio' && selectedGift !== null) {
@@ -398,7 +428,7 @@ export default function FlyPage() {
                     refreshUserProfile();
                 }
 
-                console.log('✅ Bet placed successfully:', amount, selectedWallet);
+                console.log('✅ Bet placed successfully with optimistic balance update:', amount, selectedWallet);
             } else {
                 console.error('❌ Bet placement failed');
                 showError('Failed to place bet. Please check console for details.');

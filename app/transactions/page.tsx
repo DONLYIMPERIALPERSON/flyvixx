@@ -92,6 +92,7 @@ export default function TransactionsPage() {
             case 'withdrawal': return 'Withdrawal';
             case 'bet_placed': return 'Bet Placed';
             case 'cash_out': return 'Cash Out';
+            case 'bet_lost': return 'Bet Lost';
             case 'transfer': return 'Transfer';
             default: return type;
         }
@@ -142,6 +143,7 @@ export default function TransactionsPage() {
                                                 <p className={`font-bold ${
                                                     transaction.type === 'withdrawal' ||
                                                     transaction.type === 'bet_placed' ||
+                                                    transaction.type === 'bet_lost' ||
                                                     transaction.type === 'lock_funds' ||
                                                     (transaction.type === 'transfer' && transaction.metadata?.direction === 'out')
                                                         ? 'text-red-400'
@@ -149,6 +151,7 @@ export default function TransactionsPage() {
                                                 }`}>
                                                     {transaction.type === 'withdrawal' ||
                                                      transaction.type === 'bet_placed' ||
+                                                     transaction.type === 'bet_lost' ||
                                                      transaction.type === 'lock_funds' ||
                                                      (transaction.type === 'transfer' && transaction.metadata?.direction === 'out')
                                                          ? '-' : '+'}

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from "react";
-import { X, Copy, CheckCircle, AlertCircle, Clock, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Copy, CheckCircle, AlertCircle, Clock, Loader2, QrCode } from "lucide-react";
 import { useSession } from "@descope/react-sdk";
 
 interface DepositModalProps {
@@ -10,10 +10,7 @@ interface DepositModalProps {
     onDepositSuccess?: () => void;
 }
 
-const depositAddresses = {
-    btc: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
-    usdt: 'TJ1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa'
-};
+
 
 const bankDetails = {
     accountName: 'FlyVixx Gaming Ltd',
@@ -32,6 +29,20 @@ interface VirtualAccount {
     expiryDate: string;
 }
 
+interface CryptoRate {
+    symbol: string;
+    price: number;
+    timestamp: number;
+}
+
+interface CryptoDepositDetails {
+    walletAddress: string;
+    cryptoAmount: number;
+    usdAmount: number;
+    expirationTime: Date;
+    qrCodeUrl: string;
+}
+
 export default function DepositModal({ isOpen, onClose, onDepositSuccess }: DepositModalProps) {
     const { sessionToken } = useSession();
     const [activeTab, setActiveTab] = useState<'btc' | 'usdt' | 'bank'>('bank');
@@ -40,6 +51,12 @@ export default function DepositModal({ isOpen, onClose, onDepositSuccess }: Depo
     const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
     const [virtualAccount, setVirtualAccount] = useState<VirtualAccount | null>(null);
+
+    // Crypto deposit states
+    const [btcRate, setBtcRate] = useState<CryptoRate | null>(null);
+    const [cryptoDepositDetails, setCryptoDepositDetails] = useState<CryptoDepositDetails | null>(null);
+    const [cryptoDepositSubmitted, setCryptoDepositSubmitted] = useState(false);
+    const [isCalculatingRate, setIsCalculatingRate] = useState(false);
 
     const handleCopyAddress = async (address: string) => {
         try {
@@ -99,6 +116,114 @@ export default function DepositModal({ isOpen, onClose, onDepositSuccess }: Depo
         setVirtualAccount(null);
     };
 
+    // Fetch BTC rate on mount
+    useEffect(() => {
+        if (isOpen && (activeTab === 'btc' || activeTab === 'usdt')) {
+            fetchBtcRate();
+        }
+    }, [isOpen, activeTab]);
+
+    const fetchBtcRate = async () => {
+        try {
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+            const response = await fetch(`${apiBaseUrl}/api/crypto/rate?symbol=BTCUSDT`, {
+                headers: {
+                    'Authorization': `Bearer ${sessionToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setBtcRate(data.rate);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch BTC rate:', error);
+        }
+    };
+
+    const calculateCryptoDeposit = async () => {
+        const usdAmount = parseFloat(depositAmount);
+        if (isNaN(usdAmount) || usdAmount <= 0) return;
+
+        setIsCalculatingRate(true);
+
+        try {
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+            const response = await fetch(`${apiBaseUrl}/api/crypto/deposit-details`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                body: JSON.stringify({
+                    usdAmount,
+                    cryptoType: activeTab
+                })
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to get deposit details');
+            }
+
+            setCryptoDepositDetails({
+                walletAddress: data.data.walletAddress,
+                cryptoAmount: data.data.cryptoAmount,
+                usdAmount: data.data.usdAmount,
+                expirationTime: new Date(data.data.expirationTime),
+                qrCodeUrl: data.data.qrCodeUrl
+            });
+        } catch (error) {
+            console.error('Error calculating crypto deposit:', error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            alert(`Unable to get deposit details: ${errorMessage}. Please try again.`);
+        } finally {
+            setIsCalculatingRate(false);
+        }
+    };
+
+    const handleCryptoDepositSubmit = async () => {
+        if (!cryptoDepositDetails) return;
+
+        setIsProcessing(true);
+        try {
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
+            const response = await fetch(`${apiBaseUrl}/api/transactions/deposit`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${sessionToken}`
+                },
+                body: JSON.stringify({
+                    type: activeTab.toLowerCase(),
+                    usdAmount: cryptoDepositDetails.usdAmount,
+                    cryptoAmount: cryptoDepositDetails.cryptoAmount,
+                    walletAddress: cryptoDepositDetails.walletAddress
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setCryptoDepositSubmitted(true);
+                    onDepositSuccess?.();
+                }
+            }
+        } catch (error) {
+            console.error('Failed to submit crypto deposit:', error);
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const resetCryptoDeposit = () => {
+        setDepositAmount('');
+        setCryptoDepositDetails(null);
+        setCryptoDepositSubmitted(false);
+    };
+
 
 
     if (!isOpen) return null;
@@ -127,6 +252,7 @@ export default function DepositModal({ isOpen, onClose, onDepositSuccess }: Depo
                             onClick={() => {
                                 setActiveTab(tab.key as 'btc' | 'usdt' | 'bank');
                                 resetBankDeposit();
+                                resetCryptoDeposit();
                             }}
                             className={`flex-1 py-3 px-4 text-center font-medium transition-colors ${
                                 activeTab === tab.key
@@ -141,43 +267,353 @@ export default function DepositModal({ isOpen, onClose, onDepositSuccess }: Depo
 
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-4">
-                    {activeTab === 'btc' && (
+                    {activeTab === 'btc' && !cryptoDepositDetails && !cryptoDepositSubmitted && (
                         <div className="space-y-4">
                             <div className="text-center">
                                 <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <span className="text-2xl font-bold text-white">₿</span>
                                 </div>
-                                <h4 className="text-lg font-semibold text-gray-900 mb-2">BTC Deposits</h4>
+                                <h4 className="text-lg font-semibold text-gray-900 mb-2">BTC Deposit</h4>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Currently not available
+                                    Deposit Bitcoin directly to your account. Fast and secure.
                                 </p>
                             </div>
 
-                            <div className="bg-gray-50 p-6 rounded-lg text-center">
-                                <p className="text-sm text-gray-700">
-                                    BTC deposits are temporarily unavailable. Please use Bank Transfer for deposits at this time.
-                                </p>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Amount to Deposit ($)
+                                </label>
+                                <input
+                                    type="number"
+                                    placeholder="Enter amount (min. $10)"
+                                    value={depositAmount}
+                                    onChange={(e) => setDepositAmount(e.target.value)}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent text-black"
+                                    style={{ fontSize: '16px' }}
+                                    min="10"
+                                />
+                                {btcRate && (
+                                    <div className="mt-2 text-sm text-gray-600">
+                                        1 BTC = ${btcRate.price.toFixed(2)}
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={calculateCryptoDeposit}
+                                disabled={!depositAmount || parseFloat(depositAmount) < 10 || isCalculatingRate}
+                                className="w-full bg-orange-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                                {isCalculatingRate ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin mr-2" />
+                                        Loading...
+                                    </>
+                                ) : (
+                                    'Proceed'
+                                )}
+                            </button>
+
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                                <div className="flex items-start space-x-2">
+                                    <AlertCircle size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm text-black font-medium">Important:</p>
+                                        <ul className="text-sm text-black mt-1 space-y-1">
+                                            <li>• Enter the amount in USD and click "Proceed"</li>
+                                            <li>• You will get BTC amount and wallet address</li>
+                                            <li>• Send the exact BTC amount to the address shown</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {activeTab === 'usdt' && (
+                    {activeTab === 'btc' && cryptoDepositDetails && !cryptoDepositSubmitted && (
+                        <div className="space-y-4">
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <span className="text-2xl font-bold text-white">₿</span>
+                                </div>
+                                <h4 className="text-lg font-semibold text-gray-900 mb-2">BTC Payment Details</h4>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Send exactly <span className="font-bold text-black">{cryptoDepositDetails.cryptoAmount.toFixed(8)} BTC</span> to the address below
+                                </p>
+                            </div>
+
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm text-black">USD Amount:</span>
+                                    <span className="font-bold text-lg text-black">${cryptoDepositDetails.usdAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-black">BTC Amount:</span>
+                                    <span className="font-bold text-lg text-black">{cryptoDepositDetails.cryptoAmount.toFixed(8)} BTC</span>
+                                </div>
+                            </div>
+
+                            <div className="text-center">
+                                <div className="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                                    <img
+                                        src={cryptoDepositDetails.qrCodeUrl}
+                                        alt="BTC Payment QR Code"
+                                        className="w-48 h-48"
+                                    />
+                                </div>
+                                <p className="mt-2 text-sm text-gray-600">Scan QR code to pay</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Wallet Address</label>
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="text"
+                                        value={cryptoDepositDetails.walletAddress}
+                                        readOnly
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-black text-sm font-mono"
+                                    />
+                                    <button
+                                        onClick={() => handleCopyAddress(cryptoDepositDetails.walletAddress)}
+                                        className="p-2 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
+                                    >
+                                        {copiedAddress === cryptoDepositDetails.walletAddress ? (
+                                            <CheckCircle size={14} />
+                                        ) : (
+                                            <Copy size={14} />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2 text-sm text-orange-600">
+                                <Clock size={16} />
+                                <span>Expires in 3 hours</span>
+                            </div>
+
+                            <div className="space-y-3">
+                                <button
+                                    onClick={handleCryptoDepositSubmit}
+                                    disabled={isProcessing}
+                                    className="w-full bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                                >
+                                    {isProcessing ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin mr-2" />
+                                            Submitting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={16} />
+                                            <span>I Have Paid</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setCryptoDepositDetails(null)}
+                                    className="w-full bg-gray-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-600 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'btc' && cryptoDepositSubmitted && (
+                        <div className="text-center space-y-6">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                                <CheckCircle size={32} className="text-green-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">BTC Deposit Submitted!</h3>
+                                <p className="text-gray-600">
+                                    Your BTC deposit request has been submitted for review.
+                                    You will receive an email confirmation once it's processed.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    resetCryptoDeposit();
+                                    onClose();
+                                }}
+                                className="w-full bg-orange-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-orange-600 transition-colors"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    )}
+
+                    {activeTab === 'usdt' && !cryptoDepositDetails && !cryptoDepositSubmitted && (
                         <div className="space-y-4">
                             <div className="text-center">
                                 <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                                     <span className="text-2xl font-bold text-white">₮</span>
                                 </div>
-                                <h4 className="text-lg font-semibold text-gray-900 mb-2">USDT Deposits</h4>
+                                <h4 className="text-lg font-semibold text-gray-900 mb-2">USDT Deposit</h4>
                                 <p className="text-sm text-gray-600 mb-4">
-                                    Currently not available
+                                    Deposit Tether directly to your account. Fast and secure.
                                 </p>
                             </div>
 
-                            <div className="bg-gray-50 p-6 rounded-lg text-center">
-                                <p className="text-sm text-gray-700">
-                                    USDT deposits are temporarily unavailable. Please use Bank Transfer for deposits at this time.
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Amount to Deposit ($)
+                                </label>
+                                <input
+                                    type="number"
+                                    placeholder="Enter amount (min. $10)"
+                                    value={depositAmount}
+                                    onChange={(e) => setDepositAmount(e.target.value)}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                                    style={{ fontSize: '16px' }}
+                                    min="10"
+                                />
+                                <div className="mt-2 text-sm text-gray-600">
+                                    1 USDT = $1.00 (Fixed rate)
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={calculateCryptoDeposit}
+                                disabled={!depositAmount || parseFloat(depositAmount) < 10 || isCalculatingRate}
+                                className="w-full bg-green-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            >
+                                {isCalculatingRate ? (
+                                    <>
+                                        <Loader2 size={16} className="animate-spin mr-2" />
+                                        Loading...
+                                    </>
+                                ) : (
+                                    'Proceed'
+                                )}
+                            </button>
+
+                            <div className="bg-blue-50 p-4 rounded-lg">
+                                <div className="flex items-start space-x-2">
+                                    <AlertCircle size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <p className="text-sm text-black font-medium">Important:</p>
+                                        <ul className="text-sm text-black mt-1 space-y-1">
+                                            <li>• Enter the amount in USD and click "Proceed"</li>
+                                            <li>• You will get USDT amount and wallet address</li>
+                                            <li>• Send the exact USDT amount to the address shown</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'usdt' && cryptoDepositDetails && !cryptoDepositSubmitted && (
+                        <div className="space-y-4">
+                            <div className="text-center">
+                                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <span className="text-2xl font-bold text-white">₮</span>
+                                </div>
+                                <h4 className="text-lg font-semibold text-gray-900 mb-2">USDT Payment Details</h4>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Send exactly <span className="font-bold text-black">{cryptoDepositDetails.cryptoAmount.toFixed(2)} USDT</span> to the address below
                                 </p>
                             </div>
+
+                            <div className="bg-gray-50 p-4 rounded-lg">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm text-black">USD Amount:</span>
+                                    <span className="font-bold text-lg text-black">${cryptoDepositDetails.usdAmount.toFixed(2)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-sm text-black">USDT Amount:</span>
+                                    <span className="font-bold text-lg text-black">{cryptoDepositDetails.cryptoAmount.toFixed(2)} USDT</span>
+                                </div>
+                            </div>
+
+                            <div className="text-center">
+                                <div className="inline-block p-4 bg-white border-2 border-gray-200 rounded-lg">
+                                    <img
+                                        src={cryptoDepositDetails.qrCodeUrl}
+                                        alt="USDT Payment QR Code"
+                                        className="w-48 h-48"
+                                    />
+                                </div>
+                                <p className="mt-2 text-sm text-gray-600">Scan QR code to pay</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Wallet Address</label>
+                                <div className="flex items-center space-x-2">
+                                    <input
+                                        type="text"
+                                        value={cryptoDepositDetails.walletAddress}
+                                        readOnly
+                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-black text-sm font-mono"
+                                    />
+                                    <button
+                                        onClick={() => handleCopyAddress(cryptoDepositDetails.walletAddress)}
+                                        className="p-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                                    >
+                                        {copiedAddress === cryptoDepositDetails.walletAddress ? (
+                                            <CheckCircle size={14} />
+                                        ) : (
+                                            <Copy size={14} />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2 text-sm text-orange-600">
+                                <Clock size={16} />
+                                <span>Expires in 3 hours</span>
+                            </div>
+
+                            <div className="space-y-3">
+                                <button
+                                    onClick={handleCryptoDepositSubmit}
+                                    disabled={isProcessing}
+                                    className="w-full bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                                >
+                                    {isProcessing ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin mr-2" />
+                                            Submitting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CheckCircle size={16} />
+                                            <span>I Have Paid</span>
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setCryptoDepositDetails(null)}
+                                    className="w-full bg-gray-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-gray-600 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'usdt' && cryptoDepositSubmitted && (
+                        <div className="text-center space-y-6">
+                            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                                <CheckCircle size={32} className="text-green-600" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900 mb-2">USDT Deposit Submitted!</h3>
+                                <p className="text-gray-600">
+                                    Your USDT deposit request has been submitted for review.
+                                    You will receive an email confirmation once it's processed.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    resetCryptoDeposit();
+                                    onClose();
+                                }}
+                                className="w-full bg-green-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-green-600 transition-colors"
+                            >
+                                Done
+                            </button>
                         </div>
                     )}
 

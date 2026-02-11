@@ -713,7 +713,7 @@ const processBetLoss = async (bet: ActiveBet, crashMultiplier: number) => {
       const transactionRepository = AppDataSource.getRepository(Transaction);
       const transaction = new Transaction();
       transaction.userId = bet.userId;
-      transaction.type = TransactionType.BET_PLACED; // Loss is recorded as bet placement
+      transaction.type = TransactionType.BET_LOST; // Loss is recorded as bet lost
       transaction.amount = -bet.amount;
       transaction.status = TransactionStatus.COMPLETED;
       transaction.description = `Cash bet lost at ${crashMultiplier.toFixed(2)}x crash`;

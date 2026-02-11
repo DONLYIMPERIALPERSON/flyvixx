@@ -27,6 +27,7 @@ import safeHavenRoutes from './routes/safehaven';
 import referralRoutes from './routes/referral';
 import notificationRoutes from './routes/notification';
 import adminAuthRoutes from './routes/adminAuth';
+import cryptoRoutes from './routes/crypto';
 
 const app = express();
 
@@ -83,6 +84,7 @@ app.use('/api/safehaven', safeHavenRoutes);
 app.use('/api/referral', referralRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminAuthRoutes);
+app.use('/api/crypto', cryptoRoutes);
 
 // Error handling middleware
 app.use(errorHandler);

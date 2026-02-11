@@ -26,7 +26,7 @@ export default function PortfolioSection({ isLoggedIn }: PortfolioSectionProps) 
     const [showPortfolioModal, setShowPortfolioModal] = useState(false);
     const [showLockFundsModal, setShowLockFundsModal] = useState(false);
     const [portfolioInfo, setPortfolioInfo] = useState<PortfolioInfo | null>(null);
-    const [userData, setUserData] = useState<{ totalFlies?: number; totalPortfolioProfit?: number } | null>(null);
+    const [userData, setUserData] = useState<{ totalFlies?: number; totalPortfolioProfit?: number; dailyGifts?: number } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     // Fetch portfolio information when logged in
@@ -78,7 +78,8 @@ export default function PortfolioSection({ isLoggedIn }: PortfolioSectionProps) 
                 if (userData.success && userData.user) {
                     setUserData({
                         totalFlies: userData.user.totalFlies || 0,
-                        totalPortfolioProfit: Number(userData.user.totalPortfolioProfit || 0)
+                        totalPortfolioProfit: Number(userData.user.totalPortfolioProfit || 0),
+                        dailyGifts: userData.user.dailyGifts || 0
                     });
                 }
             }

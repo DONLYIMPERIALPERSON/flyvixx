@@ -7,7 +7,10 @@ import {
     ChevronRight,
     Calendar,
     DollarSign,
-    User
+    User,
+    CheckCircle,
+    XCircle,
+    Coins
 } from 'lucide-react';
 import AdminNav from '@/components/admin-nav';
 import AdminGuard from '@/components/admin-guard';
@@ -18,6 +21,9 @@ interface Deposit {
     amount: number;
     dateTime: string;
     status: 'completed' | 'pending' | 'failed';
+    depositType?: 'btc' | 'usdt' | 'bank';
+    cryptoAmount?: number;
+    walletAddress?: string;
 }
 
 export default function AdminDepositsPage() {
@@ -109,6 +115,58 @@ export default function AdminDepositsPage() {
         }
     };
 
+    const handleApproveDeposit = async (depositId: string) => {
+        try {
+            const adminToken = localStorage.getItem('adminToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/deposits/${depositId}/approve`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`,
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Refresh deposits list
+                fetchDeposits();
+                alert('Deposit approved successfully!');
+            } else {
+                alert('Failed to approve deposit: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error approving deposit:', error);
+            alert('Failed to approve deposit. Please try again.');
+        }
+    };
+
+    const handleDeclineDeposit = async (depositId: string) => {
+        try {
+            const adminToken = localStorage.getItem('adminToken');
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/deposits/${depositId}/decline`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`,
+                },
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Refresh deposits list
+                fetchDeposits();
+                alert('Deposit declined successfully!');
+            } else {
+                alert('Failed to decline deposit: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error declining deposit:', error);
+            alert('Failed to decline deposit. Please try again.');
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-[#004B49] via-[#00695C] to-[#00796B] flex items-center justify-center">
@@ -151,7 +209,7 @@ export default function AdminDepositsPage() {
                     <div className="bg-white/10 backdrop-blur-lg rounded-xl border border-white/20 overflow-hidden">
                         {/* Table Header */}
                         <div className="bg-white/5 px-6 py-4 border-b border-white/10">
-                            <div className="grid grid-cols-4 gap-4">
+                            <div className="grid grid-cols-6 gap-4">
                                 <div className="flex items-center space-x-2">
                                     <User size={16} className="text-white/70" />
                                     <span className="text-white/70 font-medium">User</span>
@@ -161,10 +219,15 @@ export default function AdminDepositsPage() {
                                     <span className="text-white/70 font-medium">Amount</span>
                                 </div>
                                 <div className="flex items-center space-x-2">
+                                    <Coins size={16} className="text-white/70" />
+                                    <span className="text-white/70 font-medium">Type</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
                                     <Calendar size={16} className="text-white/70" />
                                     <span className="text-white/70 font-medium">Date & Time</span>
                                 </div>
                                 <div className="text-white/70 font-medium">Status</div>
+                                <div className="text-white/70 font-medium">Actions</div>
                             </div>
                         </div>
 
@@ -173,14 +236,54 @@ export default function AdminDepositsPage() {
                             {currentDeposits.length > 0 ? (
                                 currentDeposits.map((deposit) => (
                                     <div key={deposit.id} className="px-6 py-4 hover:bg-white/5 transition-colors">
-                                        <div className="grid grid-cols-4 gap-4 items-center">
+                                        <div className="grid grid-cols-6 gap-4 items-center">
                                             <div className="text-white font-medium">{deposit.userEmail}</div>
-                                            <div className="text-[#FFD700] font-bold">${deposit.amount.toFixed(2)}</div>
+                                            <div className="text-[#FFD700] font-bold">
+                                                ${deposit.amount.toFixed(2)}
+                                                {deposit.cryptoAmount && (
+                                                    <div className="text-xs text-white/60">
+                                                        {deposit.cryptoAmount.toFixed(deposit.depositType === 'btc' ? 8 : 2)} {deposit.depositType?.toUpperCase()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                {deposit.depositType && (
+                                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                                        deposit.depositType === 'btc'
+                                                            ? 'bg-orange-500/20 text-orange-400'
+                                                            : deposit.depositType === 'usdt'
+                                                            ? 'bg-green-500/20 text-green-400'
+                                                            : 'bg-blue-500/20 text-blue-400'
+                                                    }`}>
+                                                        {deposit.depositType.toUpperCase()}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="text-white/70 text-sm">{deposit.dateTime}</div>
                                             <div>
                                                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(deposit.status)}`}>
                                                     {deposit.status.charAt(0).toUpperCase() + deposit.status.slice(1)}
                                                 </span>
+                                            </div>
+                                            <div className="flex items-center space-x-2">
+                                                {deposit.status === 'pending' && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleApproveDeposit(deposit.id)}
+                                                            className="p-1 bg-green-500/20 hover:bg-green-500/30 rounded text-green-400 hover:text-green-300 transition-colors"
+                                                            title="Approve deposit"
+                                                        >
+                                                            <CheckCircle size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeclineDeposit(deposit.id)}
+                                                            className="p-1 bg-red-500/20 hover:bg-red-500/30 rounded text-red-400 hover:text-red-300 transition-colors"
+                                                            title="Decline deposit"
+                                                        >
+                                                            <XCircle size={16} />
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>

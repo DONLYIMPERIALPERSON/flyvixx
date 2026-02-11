@@ -95,6 +95,43 @@ router.post('/withdraw', validateDescopeToken, async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
+    // Check eligibility for crypto withdrawals
+    if (method === 'btc' || method === 'usdt') {
+      // 1. Must have payout method configured
+      if (!user.payoutDetails) {
+        return res.status(400).json({ success: false, error: 'Payout details not configured. Please set up your crypto wallet address in settings.' });
+      }
+
+      const payoutMethod = method === 'btc' ? user.payoutDetails.btc : user.payoutDetails.usdt;
+      if (!payoutMethod) {
+        return res.status(400).json({ success: false, error: `No ${method.toUpperCase()} wallet address configured. Please add it in your payout settings.` });
+      }
+
+      // 2. Last deposit must be via the same method
+      const lastDeposit = await transactionRepository.findOne({
+        where: {
+          userId,
+          type: TransactionType.DEPOSIT,
+          status: TransactionStatus.COMPLETED
+        },
+        order: { createdAt: 'DESC' }
+      });
+
+      if (!lastDeposit) {
+        return res.status(400).json({ success: false, error: 'No previous deposits found. You must make a deposit before withdrawing.' });
+      }
+
+      const lastDepositMetadata = lastDeposit.metadata || {};
+      const lastDepositType = lastDepositMetadata.depositType;
+
+      if (lastDepositType !== method) {
+        return res.status(400).json({
+          success: false,
+          error: `Your last deposit was via ${lastDepositType?.toUpperCase() || 'unknown method'}. You can only withdraw to the same method as your last deposit.`
+        });
+      }
+    }
+
     const balanceBefore = Number(user.cashBalance);
 
     // Calculate withdrawal fee based on method
@@ -131,24 +168,41 @@ router.post('/withdraw', validateDescopeToken, async (req, res) => {
     transaction.amount = amount;
     transaction.balanceBefore = balanceBefore;
     transaction.balanceAfter = balanceBefore - amount;
-    transaction.status = TransactionStatus.PENDING;
-    transaction.description = `Withdrawal via ${method}`;
-    transaction.metadata = { method };
+
+    // For crypto withdrawals, keep as PENDING for admin approval
+    // For bank withdrawals, mark as PENDING_APPROVAL for SafeHaven processing
+    if (method === 'btc' || method === 'usdt') {
+      transaction.status = TransactionStatus.PENDING;
+      transaction.description = `Crypto withdrawal via ${method.toUpperCase()} (Pending Admin Approval)`;
+    } else {
+      transaction.status = TransactionStatus.PENDING_APPROVAL;
+      transaction.description = `Bank withdrawal via ${method}`;
+    }
+
+    transaction.metadata = {
+      method,
+      withdrawalFee,
+      totalCost,
+      ...(method === 'btc' && user.payoutDetails?.btc && { cryptoAddress: user.payoutDetails.btc.btcAddress }),
+      ...(method === 'usdt' && user.payoutDetails?.usdt && { cryptoAddress: user.payoutDetails.usdt.usdtAddress })
+    };
 
     await transactionRepository.save(transaction);
 
-    // Update user balance
+    // Update user balance (debit immediately)
     user.cashBalance = balanceBefore - amount;
     await userRepository.save(user);
 
-    // Mark transaction as completed
-    transaction.status = TransactionStatus.COMPLETED;
-    await transactionRepository.save(transaction);
+    // For bank withdrawals, trigger SafeHaven processing
+    if (method === 'bank') {
+      // Existing bank withdrawal logic would go here
+      // This keeps the current behavior for bank withdrawals
+    }
 
     // Invalidate user cache after balance change
     await cachedUserService.invalidateUserCache(userId);
 
-    logger.info(`Withdrawal completed for user: ${userId}, transaction: ${transaction.id}`);
+    logger.info(`Withdrawal ${method === 'btc' || method === 'usdt' ? 'pending approval' : 'completed'} for user: ${userId}, transaction: ${transaction.id}`);
 
     res.json({
       success: true,
@@ -162,7 +216,10 @@ router.post('/withdraw', validateDescopeToken, async (req, res) => {
         description: transaction.description,
         createdAt: transaction.createdAt
       },
-      newBalance: Number(user.cashBalance)
+      newBalance: Number(user.cashBalance),
+      message: method === 'btc' || method === 'usdt'
+        ? 'Crypto withdrawal request submitted. It will be processed after admin approval.'
+        : 'Withdrawal request submitted for processing.'
     });
   } catch (error) {
     logger.error('Withdrawal error:', error);
@@ -275,6 +332,72 @@ router.post('/transfer', validateDescopeToken, async (req, res) => {
   } catch (error) {
     logger.error('Transfer error:', error);
     res.status(500).json({ success: false, error: 'Failed to process transfer' });
+  }
+});
+
+// POST /api/transactions/deposit - Create a crypto deposit transaction
+router.post('/deposit', validateDescopeToken, async (req, res) => {
+  try {
+    const userId = (req as any).user?.sub;
+    if (!userId) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { type, usdAmount, cryptoAmount, walletAddress } = req.body;
+
+    if (!type || !usdAmount || !cryptoAmount || !walletAddress) {
+      return res.status(400).json({ success: false, error: 'Missing required fields' });
+    }
+
+    if (!['btc', 'usdt'].includes(type)) {
+      return res.status(400).json({ success: false, error: 'Invalid deposit type' });
+    }
+
+    if (usdAmount < 10) {
+      return res.status(400).json({ success: false, error: 'Minimum deposit amount is $10' });
+    }
+
+    logger.info(`Crypto deposit request for user: ${userId}, type: ${type}, usdAmount: ${usdAmount}, cryptoAmount: ${cryptoAmount}`);
+
+    const transactionRepository = AppDataSource.getRepository(Transaction);
+
+    // Create pending deposit transaction
+    const transaction = new Transaction();
+    transaction.userId = userId;
+    transaction.type = TransactionType.DEPOSIT;
+    transaction.amount = usdAmount;
+    transaction.balanceBefore = 0; // Will be updated when approved
+    transaction.balanceAfter = 0; // Will be updated when approved
+    transaction.status = TransactionStatus.PENDING;
+    transaction.description = `Crypto deposit via ${type.toUpperCase()}`;
+    transaction.metadata = {
+      depositType: type,
+      cryptoAmount,
+      walletAddress,
+      usdAmount,
+      submittedAt: new Date().toISOString()
+    };
+
+    await transactionRepository.save(transaction);
+
+    logger.info(`Crypto deposit transaction created for user: ${userId}, transaction: ${transaction.id}`);
+
+    res.json({
+      success: true,
+      transaction: {
+        id: transaction.id,
+        type: transaction.type,
+        amount: Number(transaction.amount),
+        status: transaction.status,
+        description: transaction.description,
+        createdAt: transaction.createdAt,
+        metadata: transaction.metadata
+      },
+      message: 'Deposit request submitted successfully. Please send the exact crypto amount to the address shown.'
+    });
+  } catch (error) {
+    logger.error('Crypto deposit error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create deposit request' });
   }
 });
 

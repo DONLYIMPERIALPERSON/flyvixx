@@ -7,12 +7,13 @@ import { Bet } from '../models/Bet';
 import { Transaction } from '../models/Transaction';
 import { Notification } from '../models/Notification';
 import { Admin } from '../models/Admin';
+import { CryptoRate } from '../models/CryptoRate';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false }, // Accept self-signed certificates for development
-  entities: [User, Game, Bet, Transaction, Notification, Admin],
+  entities: [User, Game, Bet, Transaction, Notification, Admin, CryptoRate],
   synchronize: process.env.NODE_ENV === 'development', // Auto-create tables in dev
   logging: false, // Disable SQL query logging to reduce log noise
   poolSize: 10,

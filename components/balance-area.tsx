@@ -2,75 +2,21 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useSession } from "@descope/react-sdk";
 import DepositModal from "./deposit-modal";
 import WithdrawalModal from "./withdrawal-modal";
 import TransferModal from "./transfer-modal";
+import { useBalance } from "./balance-context";
 
 interface BalanceAreaProps {
     isLoggedIn: boolean;
 }
 
-interface Balance {
-    cash: number;
-    portfolio: number;
-    lockedFunds: number;
-    lockedUntil: Date | null;
-    total: number;
-}
-
 export default function BalanceArea({ isLoggedIn }: BalanceAreaProps) {
-    const { sessionToken } = useSession();
+    const { balance, isLoading, refreshBalance } = useBalance();
     const [visible, setVisible] = useState(true);
     const [showDepositModal, setShowDepositModal] = useState(false);
     const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
     const [showTransferModal, setShowTransferModal] = useState(false);
-    const [balance, setBalance] = useState<Balance>({ cash: 0, portfolio: 0, lockedFunds: 0, lockedUntil: null, total: 0 });
-    const [isLoading, setIsLoading] = useState(false);
-
-    // Fetch balance data when logged in
-    useEffect(() => {
-        if (isLoggedIn) {
-            fetchBalance();
-        }
-    }, [isLoggedIn]);
-
-    const fetchBalance = async () => {
-        try {
-            setIsLoading(true);
-            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL;
-
-            if (!apiBaseUrl) {
-                console.error('API URL not configured');
-                return;
-            }
-
-            const response = await fetch(`${apiBaseUrl}/api/transactions/balance`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionToken}`
-                },
-                credentials: 'include'
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.success) {
-                    setBalance(data.balance);
-                }
-            }
-        } catch (error) {
-            console.error('Failed to fetch balance:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Refresh balance after transactions
-    const refreshBalance = () => {
-        fetchBalance();
-    };
 
     if (!isLoggedIn) {
         return (
