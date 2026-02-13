@@ -19,8 +19,8 @@ interface PayoutDetails {
 const withdrawalMethodsConfig = {
     bank: {
         label: 'Bank Transfer',
-        minAmount: 10,
-        charge: 1.00,
+        minAmount: 1,
+        charge: 0.50,
         type: 'bank' as const
     },
     btc: {

@@ -19,8 +19,8 @@ export default function LockFundsModal({ isOpen, onClose, onLockSuccess }: LockF
     const handleLockFunds = async () => {
         const lockAmount = parseFloat(amount);
 
-        if (!lockAmount || lockAmount < 10) {
-            setError('Minimum lock amount is $10');
+        if (!lockAmount || lockAmount < 1) {
+            setError('Minimum lock amount is $1');
             return;
         }
 
@@ -120,8 +120,8 @@ export default function LockFundsModal({ isOpen, onClose, onLockSuccess }: LockF
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
                                 className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#FFD700] focus:border-transparent text-black"
-                                placeholder="10.00"
-                                min="10"
+                                placeholder="1.00"
+                                min="1"
                                 max="10000"
                                 step="0.01"
                                 inputMode="decimal"
@@ -131,7 +131,7 @@ export default function LockFundsModal({ isOpen, onClose, onLockSuccess }: LockF
                             />
                         </div>
                         <p className="text-xs text-gray-500 mt-1">
-                            Minimum: $10 • Maximum: $10,000
+                            Minimum: $1 • Maximum: $10,000
                         </p>
                     </div>
 

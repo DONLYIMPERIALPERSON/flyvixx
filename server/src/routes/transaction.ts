@@ -79,9 +79,13 @@ router.post('/withdraw', validateDescopeToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid amount' });
     }
 
-    // Validate minimum withdrawal amount
-    if (amount < 10) {
-      return res.status(400).json({ success: false, error: 'Minimum withdrawal amount is $10' });
+    // Validate minimum withdrawal amount based on method
+    let minWithdrawal = 10; // Default for crypto
+    if (method === 'bank') {
+      minWithdrawal = 1;
+    }
+    if (amount < minWithdrawal) {
+      return res.status(400).json({ success: false, error: `Minimum withdrawal amount is $${minWithdrawal}` });
     }
 
     logger.info(`Withdrawal request for user: ${userId}, amount: ${amount}, method: ${method}`);
@@ -144,7 +148,7 @@ router.post('/withdraw', validateDescopeToken, async (req, res) => {
         withdrawalFee = 2.00;
         break;
       case 'bank':
-        withdrawalFee = 1.00;
+        withdrawalFee = 0.50;
         break;
       default:
         return res.status(400).json({ success: false, error: 'Invalid withdrawal method' });
@@ -353,8 +357,15 @@ router.post('/deposit', validateDescopeToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid deposit type' });
     }
 
-    if (usdAmount < 10) {
-      return res.status(400).json({ success: false, error: 'Minimum deposit amount is $10' });
+    // Minimum deposit validation based on type
+    if (type === 'btc' || type === 'usdt') {
+      if (usdAmount < 10) {
+        return res.status(400).json({ success: false, error: 'Minimum crypto deposit amount is $10' });
+      }
+    } else if (type === 'bank') {
+      if (usdAmount < 1) {
+        return res.status(400).json({ success: false, error: 'Minimum bank deposit amount is $1' });
+      }
     }
 
     logger.info(`Crypto deposit request for user: ${userId}, type: ${type}, usdAmount: ${usdAmount}, cryptoAmount: ${cryptoAmount}`);
@@ -452,8 +463,8 @@ router.post('/lock-funds', validateDescopeToken, async (req, res) => {
     }
 
     // Validate minimum lock amount
-    if (amount < 10) {
-      return res.status(400).json({ success: false, error: 'Minimum lock amount is $10' });
+    if (amount < 1) {
+      return res.status(400).json({ success: false, error: 'Minimum lock amount is $1' });
     }
 
     logger.info(`Lock funds request for user: ${userId}, amount: ${amount}`);

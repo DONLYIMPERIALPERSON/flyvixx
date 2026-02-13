@@ -82,10 +82,10 @@ router.post('/virtual-account', validateDescopeToken, async (req, res) => {
         const { amount } = req.body; // amount is in USD
         const userId = (req as any).user?.sub;
 
-        if (!amount || amount < 5) {
+        if (!amount || amount < 1) {
             return res.status(400).json({
                 success: false,
-                error: 'Minimum deposit amount is $5'
+                error: 'Minimum deposit amount is $1'
             });
         }
 

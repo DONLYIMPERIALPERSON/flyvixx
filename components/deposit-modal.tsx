@@ -70,8 +70,8 @@ export default function DepositModal({ isOpen, onClose, onDepositSuccess }: Depo
 
     const handleTopUp = async () => {
         const amount = parseFloat(depositAmount);
-        if (!amount || amount < 5) {
-            alert('Minimum deposit amount is $5');
+        if (!amount || amount < 1) {
+            alert('Minimum deposit amount is $1');
             return;
         }
 
@@ -635,12 +635,12 @@ export default function DepositModal({ isOpen, onClose, onDepositSuccess }: Depo
                                 </label>
                                 <input
                                     type="number"
-                                    placeholder="Enter amount (min. $5)"
+                                    placeholder="Enter amount (min. $1)"
                                     value={depositAmount}
                                     onChange={(e) => setDepositAmount(e.target.value)}
                                     className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#004B49] focus:border-transparent text-black"
                                     style={{ fontSize: '16px' }}
-                                    min="5"
+                                    min="1"
                                 />
                             </div>
 
